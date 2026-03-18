@@ -7,6 +7,10 @@
         "CONTEXT7_API_KEY": "ctx7sk-36944a34-e3c8-49a1-8581-aab2af476e9e"
       },
       "tools": ["query-docs", "resolve-library-id"]
+    },
+    "github": {
+      "type": "github",
+      "tools": ["create-issue", "create-pull-request", "list-workflows"]
     }
   }
 }

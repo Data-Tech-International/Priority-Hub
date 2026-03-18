@@ -20,7 +20,7 @@
     },
     {
       "name": "Priority Hub Frontend",
-      "type": "pwa-msedge",
+      "type": "msedge",
       "request": "launch",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/src",
