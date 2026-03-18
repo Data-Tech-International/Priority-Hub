@@ -31,15 +31,6 @@ jobs:
       - name: Run frontend tests with coverage
         id: frontend-test
         run: npm run test:coverage
-        continue-on-error: true
-      
-      - name: Check coverage threshold
-        id: coverage-check
-        run: |
-          # This will be enhanced in Phase 4 with actual coverage parsing
-          echo "Frontend coverage check prepared"
-          echo "Threshold: ${{ env.COVERAGE_THRESHOLD }}%"
-        continue-on-error: true
       
       - name: Upload coverage to artifacts
         if: always()
@@ -66,7 +57,6 @@ jobs:
       - name: Run backend tests
         id: backend-test
         run: dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj --logger "console;verbosity=normal" --no-restore
-        continue-on-error: true
       
       - name: Test summary
         if: always()
@@ -111,14 +101,3 @@ jobs:
               repo: context.repo.repo,
               body: `📊 **Test Coverage Report**\n\nFrontend coverage threshold: 60%\nBackend coverage threshold: 60%\n\nRun \`npm run test:coverage\` and \`dotnet test\` locally to verify coverage.`
             })
-
-  enforce-threshold:
-    runs-on: ubuntu-latest
-    name: Enforce Coverage Threshold
-    needs: [frontend-coverage, backend-coverage]
-    if: failure()
-    steps:
-      - name: Mark workflow as failed due to coverage
-        run: |
-          echo "❌ Coverage threshold not met (60% required)"
-          exit 1

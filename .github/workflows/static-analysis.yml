@@ -23,7 +23,7 @@ jobs:
       
       - name: Build with analyzers
         id: build
-        run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore --configuration Release /p:EnforceCodeStyleInBuild=true /p:TreatWarningsAsErrors=false
+        run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore --configuration Release /p:EnableNETAnalyzers=true /p:TreatWarningsAsErrors=false
         continue-on-error: true
       
       - name: Run code analysis

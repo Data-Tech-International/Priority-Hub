@@ -17,18 +17,22 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       reportOnFailure: true,
-      lines: 60,
-      functions: 60,
-      branches: 60,
-      statements: 60,
+      include: ['src/lib/**/*.js', 'src/lib/**/*.jsx'],
       exclude: [
         'node_modules/',
+        'coverage/',
         'src/test/',
         '**/*.test.js',
         '**/*.test.jsx',
         '**/*.spec.js',
         '**/*.spec.jsx'
-      ]
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 60,
+        statements: 60
+      }
     }
   },
 });

@@ -78,7 +78,7 @@ jobs:
 
   backend-style:
     runs-on: ubuntu-latest
-    name: StyleCop Analysis
+    name: .NET Analyzer Build
     steps:
       - uses: actions/checkout@v4
       
@@ -90,6 +90,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
       
-      - name: Build with StyleCop
-        run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore /p:EnforceCodeStyleInBuild=true /p:TreatWarningsAsErrors=false
+      - name: Build with .NET analyzers
+        run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore /p:EnableNETAnalyzers=true /p:TreatWarningsAsErrors=false
         continue-on-error: true

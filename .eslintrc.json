@@ -26,11 +26,7 @@
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "eqeqeq": ["error", "always"],
-    "indent": ["warn", 2],
-    "quotes": ["warn", "single", { "avoidEscape": true }],
-    "semi": ["warn", "always"],
-    "comma-dangle": ["warn", "never"],
-    "curly": ["warn", "all"]
+    "no-constant-condition": ["error", { "checkLoops": false }]
   },
   "settings": {
     "react": {

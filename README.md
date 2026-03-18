@@ -75,7 +75,7 @@ Client-side validators block save until required fields are present and Jira bas
 ```bash
 npm run test                # Run once
 npm run test:watch         # Watch mode
-npm run test:coverage      # Generate coverage report (threshold: 60%)
+npm run test:coverage      # Generate coverage report for core frontend library modules (threshold: 60%)
 ```
 
 **Backend:** Run tests with xUnit
@@ -94,7 +94,7 @@ npm run lint:fix   # Auto-fix style issues
 **Backend:** dotnet format + StyleCop analyzers
 ```bash
 dotnet format backend/PriorityHub.Api/PriorityHub.Api.csproj  # Auto-format
-dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj /p:EnforceCodeStyleInBuild=true  # Check style
+dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj /p:EnableNETAnalyzers=true  # Run analyzer checks
 ```
 
 ### CI/CD Pipeline
@@ -113,7 +113,7 @@ All code pushed to the `main` branch and PRs automatically run four GitHub workf
    - **Fails on:** Critical/High CVEs, verified secrets
    - **Warns on:** Moderate vulnerabilities
 
-3. **Static Code Analysis** — Roslyn analyzers + complexity metrics
+3. **Static Code Analysis** — .NET analyzers + complexity metrics
    - Enforces .NET design patterns and best practices
    - Measures code complexity (max 10 per method)
    - Detects dead code and architectural violations
@@ -122,7 +122,7 @@ All code pushed to the `main` branch and PRs automatically run four GitHub workf
 4. **Test Coverage** — Frontend + backend test execution
    - Runs all unit tests
    - Collects coverage metrics
-   - **Fails if:** Overall coverage < 60%
+   - **Fails if:** Frontend core library coverage or backend test run falls below configured standards
    - **Reports:** Coverage delta vs main branch on each PR
 
 **Agent Automation:**  

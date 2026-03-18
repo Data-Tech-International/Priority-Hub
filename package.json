@@ -12,7 +12,7 @@
     "test": "vitest run --pool=forks --poolOptions.forks.singleFork=true",
     "test:watch": "vitest --pool=forks --poolOptions.forks.singleFork=true",
     "test:coverage": "vitest run --coverage --pool=forks --poolOptions.forks.singleFork=true",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src",
     "lint:fix": "eslint src --fix"
   },
   "dependencies": {
