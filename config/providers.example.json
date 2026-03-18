@@ -1,0 +1,57 @@
+{
+  "preferences": {
+    "orderedItemIds": []
+  },
+  "azureDevOps": [
+    {
+      "id": "ado-platform",
+      "name": "Commerce Platform",
+      "organization": "your-organization",
+      "project": "Commerce Platform",
+      "personalAccessToken": "replace-with-pat",
+      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "enabled": true
+    },
+    {
+      "id": "ado-shared-services",
+      "name": "Shared Services",
+      "organization": "your-organization",
+      "project": "Shared Services",
+      "personalAccessToken": "replace-with-pat",
+      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "enabled": true
+    }
+  ],
+  "github": [
+    {
+      "id": "github-priority-hub",
+      "name": "Priority Hub Issues",
+      "owner": "your-org-or-user",
+      "repository": "your-repository",
+      "personalAccessToken": "replace-with-pat-or-leave-empty-with-github-login",
+      "query": "is:open assignee:@me",
+      "enabled": true
+    }
+  ],
+  "jira": [
+    {
+      "id": "jira-growth",
+      "name": "Growth Board",
+      "baseUrl": "https://your-domain.atlassian.net",
+      "email": "you@example.com",
+      "apiToken": "replace-with-api-token",
+      "jql": "project = GROWTH AND assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC, updated DESC",
+      "enabled": true
+    }
+  ],
+  "trello": [
+    {
+      "id": "trello-consulting",
+      "name": "Advisory Pipeline",
+      "boardId": "replace-with-board-id",
+      "apiKey": "replace-with-key",
+      "token": "replace-with-token",
+      "enabled": true
+    }
+  ]
+}

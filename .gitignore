@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-server/
+coverage/
+.env
+config/providers.local.json
+config/users/
+backend/PriorityHub.Api/appsettings.Development.json
+
+# .NET build outputs
+**/bin/
+**/obj/

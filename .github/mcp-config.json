@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-36944a34-e3c8-49a1-8581-aab2af476e9e"
+      },
+      "tools": [
+        "query-docs",
+        "resolve-library-id",
+        "check-security-advisory",
+        "get-remediation-path"
+      ]
+    },
+    "github": {
+      "type": "github",
+      "tools": [
+        "create-issue",
+        "create-pull-request",
+        "add-pr-comment",
+        "list-workflows"
+      ]
+    }
+  },
+  "agents": {
+    "security": {
+      "mcp_required": ["context7"],
+      "capabilities": [
+        "resolve-library-id for CVE lookups",
+        "check-security-advisory for package advisories",
+        "get-remediation-path for dependency updates"
+      ]
+    },
+    "static-analysis": {
+      "mcp_optional": ["context7"],
+      "capabilities": [
+        "query-docs for architectural patterns",
+        "resolve-library-id for design best practices"
+      ]
+    },
+    "test-coverage": {
+      "mcp_optional": ["context7"],
+      "capabilities": [
+        "query-docs for testing best practices and patterns"
+      ]
+    }
+  }
+}

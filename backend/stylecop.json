@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "companyName": "Data-Tech International",
+      "copyrightText": "Copyright (c) {year} Data-Tech International. All rights reserved.",
+      "variables": {
+        "year": "2026"
+      },
+      "documentInterfaces": true,
+      "documentExposedElements": true,
+      "documentInternalElements": false,
+      "documentPrivateElements": false,
+      "documentationCulture": "en-US"
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "allow",
+      "allowConsecutiveUsings": true
+    },
+    "indentationRules": {
+      "indentationSize": 4,
+      "useTabsForIndentation": false,
+      "tabSize": 4
+    },
+    "namingRules": {
+      "allowCommonHungarianPrefixes": false,
+      "allowPrivateFieldsStartingWithUnderscore": true
+    },
+    "orderingRules": {
+      "elementOrder": [
+        "Kind",
+        "Accessibility",
+        "Constant",
+        "Static",
+        "ReadOnly"
+      ],
+      "implementInterfaceOrder": ["I.*"]
+    },
+    "maintainabilityRules": {
+      "topLevelPublicTypePrefix": "PT",
+      "topLevelTypes": ["class", "interface", "struct", "enum", "delegate"]
+    }
+  }
+}
