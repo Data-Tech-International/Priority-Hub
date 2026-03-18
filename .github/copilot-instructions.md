@@ -23,11 +23,13 @@
 - Queue behavior: users can persist a manual drag-drop item order across multiple sources and newly seen items are highlighted.
 - VS Code setup: no extensions are required by the Vite setup metadata, and debug-style project launch configuration is available.
 - Specification: Before creation of implementation plan create specification and ask if in doubt
-- Plans: Store all plans in the `Plans/` directory with clear step-by-step instructions, file lists, and verification steps. Link to relevant plans in the README and update as needed.
+- Plans: Store all plans in the `plans/` directory with clear step-by-step instructions, file lists, and verification steps. Link to relevant plans in the README and update as needed.
 - Testing: backend tests with xUnit and mocked HttpClient; frontend tests with Vitest and React Testing Library. Add test scripts to package.json and ensure they run in CI.
 - Documentation: keep the README up to date with setup instructions, architecture overview, and usage guide. Add comments in code for complex logic and public methods.
 - Git hygiene: ensure all local config files are gitignored, commit with clear messages, and maintain a clean commit history.
-- Specification: the README should serve as the single source of truth for how to set up, run, and use the app, while the Plans/ directory should contain detailed implementation plans for each major feature or change.
+- Specification: the README should serve as the single source of truth for how to set up, run, and use the app, while the plans/ directory should contain detailed implementation plans for each major feature or change.
+- Spec-first workflow: each major change must start from a GitHub issue labeled `specification`. Implementation begins only after a generated plan exists and the issue has label `plan-approved`.
+- Implementation handoff: once plan is approved, automation creates an implementation issue, feature branch, and draft PR. The assigned agent must deliver code, tests, and docs in that branch.
 - Communication: if any part of the requirements or implementation is unclear, ask for clarification before proceeding. It's better to ask questions early than to make incorrect assumptions.
 - Verification: after completing each plan, verify that the implemented feature works as expected and update the README with any new setup or usage instructions related to that feature.
 - Maintenance: periodically review the README and Plans/ directory to ensure they remain accurate and up to date with the current state of the project. Remove or archive any outdated plans or instructions.

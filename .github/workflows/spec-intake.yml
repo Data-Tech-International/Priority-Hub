@@ -1,0 +1,86 @@
+name: Spec Intake
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  capture-spec:
+    if: contains(github.event.issue.labels.*.name, 'specification')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Build specification file
+        id: spec
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const issue = context.payload.issue;
+            const slug = issue.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 64) || `spec-${issue.number}`;
+
+            const specPath = `plans/specifications/spec-${issue.number}-${slug}.md`;
+            fs.mkdirSync(path.dirname(specPath), { recursive: true });
+
+            const content = `# Specification: ${issue.title}\n\n` +
+              `## Metadata\n` +
+              `- Source issue: #${issue.number}\n` +
+              `- Source URL: ${issue.html_url}\n` +
+              `- Author: @${issue.user.login}\n` +
+              `- Created: ${issue.created_at}\n\n` +
+              `## Specification\n\n` +
+              `${issue.body || '_No details provided._'}\n\n` +
+              `## Clarifications\n` +
+              `- [ ] Confirm assumptions before planning if anything is unclear.\n`;
+
+            fs.writeFileSync(specPath, content, 'utf8');
+            core.setOutput('path', specPath);
+
+      - name: Commit specification file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.spec.outputs.path }}"
+          git commit -m "chore(spec): capture specification #${{ github.event.issue.number }}" || echo "No changes to commit"
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"
+
+      - name: Label and comment for planning handoff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+            const specPath = '${{ steps.spec.outputs.path }}';
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['needs-plan']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                'Specification captured successfully.',
+                '',
+                `- Spec file: ${specPath}`,
+                '- Next step: planning workflow will generate an implementation plan.'
+              ].join('\n')
+            });

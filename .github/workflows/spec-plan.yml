@@ -1,0 +1,107 @@
+name: Spec Plan Proposal
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  propose-plan:
+    if: github.event.label.name == 'needs-plan' && contains(github.event.issue.labels.*.name, 'specification')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Generate implementation plan
+        id: plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const issue = context.payload.issue;
+            const slug = issue.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 64) || `spec-${issue.number}`;
+
+            const planPath = `plans/spec-${issue.number}-${slug}-plan.md`;
+            fs.mkdirSync(path.dirname(planPath), { recursive: true });
+
+            const content = `# Plan: ${issue.title}\n\n` +
+              `## Source\n` +
+              `- Specification issue: #${issue.number}\n` +
+              `- URL: ${issue.html_url}\n\n` +
+              `## Proposed steps\n` +
+              `1. Validate and refine the specification details.\n` +
+              `2. Identify impacted frontend, backend, and shared files.\n` +
+              `3. Implement feature code in focused commits.\n` +
+              `4. Add or update tests for changed behavior.\n` +
+              `5. Update documentation and usage notes.\n` +
+              `6. Run local verification and CI workflows.\n\n` +
+              `## Candidate file groups\n` +
+              `- Frontend: src/**\n` +
+              `- Backend: backend/PriorityHub.Api/**\n` +
+              `- Tests: src/**/*.test.*, backend/PriorityHub.Api.Tests/**\n` +
+              `- Documentation: README.md, plans/**\n\n` +
+              `## Verification checklist\n` +
+              `- [ ] npm run lint\n` +
+              `- [ ] npm run test\n` +
+              `- [ ] npm run test:coverage\n` +
+              `- [ ] dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj\n` +
+              `- [ ] dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj\n\n` +
+              `## Notes from specification\n\n` +
+              `${issue.body || '_No details provided._'}\n`;
+
+            fs.writeFileSync(planPath, content, 'utf8');
+            core.setOutput('path', planPath);
+
+      - name: Commit plan file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.plan.outputs.path }}"
+          git commit -m "chore(plan): propose plan for spec #${{ github.event.issue.number }}" || echo "No changes to commit"
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"
+
+      - name: Update labels and add plan comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+            const planPath = '${{ steps.plan.outputs.path }}';
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['plan-proposed']
+            });
+
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              name: 'needs-plan'
+            }).catch(() => {});
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                'Plan proposal created.',
+                '',
+                `- Plan file: ${planPath}`,
+                '- Review the plan and add the label `plan-approved` to start implementation bootstrap.'
+              ].join('\n')
+            });
