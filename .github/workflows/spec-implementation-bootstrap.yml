@@ -1,0 +1,122 @@
+name: Spec Implementation Bootstrap
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  bootstrap-implementation:
+    if: github.event.label.name == 'plan-approved' && contains(github.event.issue.labels.*.name, 'specification')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create implementation issue, branch, and draft PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const repo = context.repo;
+            const base = context.payload.repository.default_branch;
+
+            const slug = issue.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 48) || `spec-${issue.number}`;
+
+            const branchName = `feature/spec-${issue.number}-${slug}`;
+            const planPath = `plans/spec-${issue.number}-${slug}-plan.md`;
+
+            const baseRef = await github.rest.git.getRef({
+              owner: repo.owner,
+              repo: repo.repo,
+              ref: `heads/${base}`
+            });
+
+            await github.rest.git.createRef({
+              owner: repo.owner,
+              repo: repo.repo,
+              ref: `refs/heads/${branchName}`,
+              sha: baseRef.data.object.sha
+            }).catch((error) => {
+              if (error.status !== 422) {
+                throw error;
+              }
+            });
+
+            const implementationIssue = await github.rest.issues.create({
+              owner: repo.owner,
+              repo: repo.repo,
+              title: `Implement spec #${issue.number}: ${issue.title}`,
+              assignees: [issue.user.login],
+              labels: ['implementation', 'agent-ready'],
+              body: [
+                `## Source specification`,
+                `- Spec issue: #${issue.number}`,
+                `- Plan file: ${planPath}`,
+                '',
+                '## Implementation requirements',
+                '- [ ] Implement production code based on approved plan',
+                '- [ ] Add or update tests for all behavior changes',
+                '- [ ] Update README and related plans/documentation',
+                '- [ ] Ensure linting, tests, and coverage checks pass',
+                '',
+                '## Agent handoff',
+                '- Assign this issue to your coding agent or invoke your implementation agent workflow.',
+                '- Use branch listed below and open commits against that branch only.',
+                '',
+                `### Branch`,
+                `- ${branchName}`
+              ].join('\n')
+            });
+
+            const pr = await github.rest.pulls.create({
+              owner: repo.owner,
+              repo: repo.repo,
+              head: branchName,
+              base,
+              draft: true,
+              title: `[Spec #${issue.number}] ${issue.title}`,
+              body: [
+                `Closes #${implementationIssue.data.number}`,
+                `Related to #${issue.number}`,
+                '',
+                '## Implementation checklist',
+                '- [ ] Code changes completed',
+                '- [ ] Tests added/updated and passing',
+                '- [ ] Documentation updated',
+                '- [ ] CI workflows green'
+              ].join('\n')
+            });
+
+            await github.rest.issues.addLabels({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: issue.number,
+              labels: ['implementation-started']
+            });
+
+            await github.rest.issues.removeLabel({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: issue.number,
+              name: 'plan-approved'
+            }).catch(() => {});
+
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: issue.number,
+              body: [
+                'Implementation bootstrap completed.',
+                '',
+                `- Implementation issue: #${implementationIssue.data.number}`,
+                `- Branch: ${branchName}`,
+                `- Draft PR: ${pr.data.html_url}`
+              ].join('\n')
+            });

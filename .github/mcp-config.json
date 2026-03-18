@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-36944a34-e3c8-49a1-8581-aab2af476e9e"
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
       },
       "tools": [
         "query-docs",
@@ -43,6 +43,22 @@
       "mcp_optional": ["context7"],
       "capabilities": [
         "query-docs for testing best practices and patterns"
+      ]
+    },
+    "spec-planner": {
+      "mcp_optional": ["context7", "github"],
+      "capabilities": [
+        "query-docs for architecture and planning best practices",
+        "create-issue for implementation handoff",
+        "create-pull-request for branch to PR bootstrap"
+      ]
+    },
+    "implementation-orchestrator": {
+      "mcp_required": ["github"],
+      "capabilities": [
+        "create-issue for implementation execution",
+        "create-pull-request for draft implementation PR",
+        "add-pr-comment for handoff and status updates"
       ]
     }
   }
