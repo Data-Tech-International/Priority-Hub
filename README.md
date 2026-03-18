@@ -1,0 +1,72 @@
+# Priority Hub
+
+Priority Hub is a Vite + React JavaScript application with an ASP.NET Core 10 backend-for-frontend for managing personal priorities across Azure DevOps, Jira, and Trello from a single view.
+
+## What is included
+
+- A unified work item model that normalizes source data from multiple board systems.
+- A ranked queue that scores work using impact, urgency, confidence, blockers, age, and estimated effort.
+- A dashboard UI with connector health, filtering, and a single personal priority view.
+- An ASP.NET Core backend-for-frontend that queries Azure DevOps with WIQL, Jira with JQL, and Trello board APIs using server-side credentials.
+- A UI-based configuration studio that can create and edit multiple connector instances for each provider type.
+- Client-side validation for connector setup before configuration is saved.
+- Support for multiple Azure DevOps projects at the same time, plus multiple Jira and Trello connector instances in parallel.
+- A drag-drop personal order that persists across items from all providers.
+- Visual highlighting for newly retrieved items until you place them into your own order.
+
+## Runtime architecture
+
+Provider credentials for Azure DevOps, Jira, and Trello do not live in frontend code. The browser calls the ASP.NET Core backend service on `/api/dashboard`, and the backend:
+
+- Stores provider credentials in a local config file managed through the UI.
+- Calls each provider API server-side.
+- Normalizes external payloads into the shared work item shape.
+- Exposes a safe UI-facing API for this React app.
+
+## UI configuration
+
+1. Start the app with `npm.cmd run dev`.
+2. Open the configuration studio in the dashboard UI.
+3. Add one or more connector instances for Azure DevOps, Jira, and Trello.
+4. Save the configuration to persist it into `config/providers.local.json`.
+
+The configuration UI only asks for required fields:
+
+- Azure DevOps: connection name, organization, project, PAT, WIQL.
+- Jira: connection name, base URL, email, API token, JQL.
+- Trello: connection name, board ID, API key, token.
+
+Client-side validators block save until required fields are present and Jira base URLs and emails are valid.
+
+`config/providers.local.json` is gitignored and is intended for local secrets only.
+
+## Supported connection model
+
+- Azure DevOps connections accept connection name, organization, project, PAT, and WIQL.
+- Jira connections accept base URL, email, API token, and JQL.
+- Trello connections accept connection name, board ID, API key, and token.
+- Each provider can define multiple connections, so the dashboard can aggregate several boards per system.
+- Multiple Azure DevOps connections can point to different projects in the same organization or across different organizations and run at the same time.
+
+## Personal ordering
+
+- The unified work queue is manually reorderable with drag and drop.
+- Order is persisted on the backend across items from all providers.
+- Newly retrieved items are marked as new, highlighted visually, and floated to the top until you place them into your own order.
+
+## Local development
+
+1. Install dependencies with `npm.cmd install`.
+2. Start the frontend and backend together with `npm.cmd run dev`.
+3. Build the frontend and backend with `npm.cmd run build`.
+4. Start only the ASP.NET Core backend watcher with `npm.cmd run dev:server`.
+5. Start only the frontend with `npm.cmd run dev:client`.
+
+## Debugging in VS Code
+
+- Use the task `Run Priority Hub` for a full-stack background run.
+- Use the launch profile `Priority Hub Full Stack` to start the backend debugger and open the frontend in Edge.
+
+## Current behavior without configuration
+
+If `config/providers.local.json` is missing or empty, the backend still returns a valid dashboard payload with no connections or work items. This lets the UI load cleanly while you configure live provider access from the dashboard itself.
