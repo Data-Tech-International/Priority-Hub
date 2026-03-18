@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-server/
+coverage/
+build/
+.vscode/
+.github/
+backend/
+PriorityHub.code-workspace
+*.less

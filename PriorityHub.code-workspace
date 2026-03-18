@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"npm.cmd": true,
+			"dotnet test": true,
+			"dotnet build": true,
+			"npx.cmd": true
+		}
+	}
+}
