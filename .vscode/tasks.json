@@ -12,9 +12,7 @@
         {
           "pattern": [
             {
-              "regexp": "^(.*)$",
-              "file": 1,
-              "message": 1
+              "regexp": "."
             }
           ],
           "background": {
@@ -35,9 +33,7 @@
         {
           "pattern": [
             {
-              "regexp": "^(.*)$",
-              "file": 1,
-              "message": 1
+              "regexp": "."
             }
           ],
           "background": {
