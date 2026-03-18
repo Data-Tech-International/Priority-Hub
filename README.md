@@ -67,6 +67,81 @@ Client-side validators block save until required fields are present and Jira bas
 - Use the task `Run Priority Hub` for a full-stack background run.
 - Use the launch profile `Priority Hub Full Stack` to start the backend debugger and open the frontend in Edge.
 
+## Code Quality & Testing
+
+### Local Testing
+
+**Frontend:** Run tests with Vitest + React Testing Library
+```bash
+npm run test                # Run once
+npm run test:watch         # Watch mode
+npm run test:coverage      # Generate coverage report (threshold: 60%)
+```
+
+**Backend:** Run tests with xUnit
+```bash
+dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
+```
+
+### Code Linting
+
+**Frontend:** ESLint enforces React and style rules
+```bash
+npm run lint       # Check for violations
+npm run lint:fix   # Auto-fix style issues
+```
+
+**Backend:** dotnet format + StyleCop analyzers
+```bash
+dotnet format backend/PriorityHub.Api/PriorityHub.Api.csproj  # Auto-format
+dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj /p:EnforceCodeStyleInBuild=true  # Check style
+```
+
+### CI/CD Pipeline
+
+All code pushed to the `main` branch and PRs automatically run four GitHub workflows:
+
+1. **Coding Standards** — ESLint + dotnet format
+   - Enforces consistent code style
+   - Fails on readability errors, warns on style violations
+   - Can auto-fix many issues with `npm run lint:fix` or `dotnet format`
+
+2. **Security Scanning** — Dependency audit + secret detection
+   - Checks npm and NuGet packages for known CVEs
+   - Detects accidentally committed secrets (API keys, tokens)
+   - Uses TruffleHog + context7 MCP for advisory lookup
+   - **Fails on:** Critical/High CVEs, verified secrets
+   - **Warns on:** Moderate vulnerabilities
+
+3. **Static Code Analysis** — Roslyn analyzers + complexity metrics
+   - Enforces .NET design patterns and best practices
+   - Measures code complexity (max 10 per method)
+   - Detects dead code and architectural violations
+   - Reports metrics for each build
+
+4. **Test Coverage** — Frontend + backend test execution
+   - Runs all unit tests
+   - Collects coverage metrics
+   - **Fails if:** Overall coverage < 60%
+   - **Reports:** Coverage delta vs main branch on each PR
+
+**Agent Automation:**  
+Each workflow is backed by a specialized agent that:
+- Comments on PRs with findings and suggestions
+- Creates GitHub issues for critical violations
+- Provides auto-fix commands and refactoring hints
+- Escalates security findings to team
+
+See [.github/agents/](.github/agents/) for detailed agent behaviors and [.github/MCP-INTEGRATION.md](.github/MCP-INTEGRATION.md) for MCP tool integration.
+
+### Configuration Files
+
+- **`.eslintrc.json`** — Frontend linting rules (max-warnings: 0, strict equality, no console.log)
+- **`backend/stylecop.json`** — Backend naming and documentation standards
+- **`.editorconfig`** — Cross-editor consistency (indentation, line endings)
+- **`.github/pull_request_template.md`** — PR checklist covering tests, security, documentation
+- **`vite.config.js`** — Vitest coverage config (60% threshold, v8 provider)
+
 ## Current behavior without configuration
 
 If `config/providers.local.json` is missing or empty, the backend still returns a valid dashboard payload with no connections or work items. This lets the UI load cleanly while you configure live provider access from the dashboard itself.
