@@ -1,0 +1,66 @@
+name: Specification Request
+description: Start work with a specification that can be planned and implemented by agents.
+title: "spec: "
+labels:
+  - specification
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Create a complete specification first. A plan and implementation workflow will follow.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What pain point or need should this change solve?
+      placeholder: Describe the problem and current behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals and outcomes
+      description: What result should users or developers see after implementation?
+      placeholder: List expected outcomes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define measurable conditions for completion.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and non-goals
+      description: Note scope limits, technical constraints, and excluded items.
+      placeholder: Constraints, risks, non-goals.
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing expectations
+      description: Which tests are required or expected to change?
+      placeholder: Unit, integration, UI, regression tests.
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation impact
+      description: Which docs must be updated?
+      placeholder: README, plans, inline docs, API docs.
+    validations:
+      required: true

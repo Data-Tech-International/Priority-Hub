@@ -134,6 +134,22 @@ Each workflow is backed by a specialized agent that:
 
 See [.github/agents/](.github/agents/) for detailed agent behaviors and [.github/MCP-INTEGRATION.md](.github/MCP-INTEGRATION.md) for MCP tool integration.
 
+### Specification-First Agent Workflow
+
+Major changes follow a strict lifecycle so implementation always starts from a specification:
+
+1. Create a GitHub issue using the `Specification Request` template (label: `specification`).
+2. Workflow `.github/workflows/spec-intake.yml` captures the issue as markdown in `plans/specifications/` and adds label `needs-plan`.
+3. Workflow `.github/workflows/spec-plan.yml` generates a plan file in `plans/` and updates the issue with label `plan-proposed`.
+4. After review, add label `plan-approved` to the specification issue.
+5. Workflow `.github/workflows/spec-implementation-bootstrap.yml` automatically creates:
+   - an implementation issue,
+   - a feature branch,
+   - and a draft PR targeting `main`.
+6. The implementation agent executes work on that branch and must include code, tests, and documentation updates.
+
+This process ensures traceability from specification to plan to implementation and keeps planning artifacts in the repository.
+
 ### Configuration Files
 
 - **`.eslintrc.json`** — Frontend linting rules (max-warnings: 0, strict equality, no console.log)
