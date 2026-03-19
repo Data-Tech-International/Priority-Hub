@@ -44,6 +44,22 @@
       "capabilities": [
         "query-docs for testing best practices and patterns"
       ]
+    },
+    "spec-planner": {
+      "mcp_optional": ["context7", "github"],
+      "capabilities": [
+        "query-docs for architecture and planning best practices",
+        "create-issue for implementation handoff",
+        "create-pull-request for branch to PR bootstrap"
+      ]
+    },
+    "implementation-orchestrator": {
+      "mcp_required": ["github"],
+      "capabilities": [
+        "create-issue for implementation execution",
+        "create-pull-request for draft implementation PR",
+        "add-pr-comment for handoff and status updates"
+      ]
     }
   }
 }

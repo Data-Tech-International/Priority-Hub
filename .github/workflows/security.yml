@@ -22,9 +22,24 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Frontend audit
+      - name: Frontend audit (collect)
         id: npm-audit
-        run: npm audit --audit-level=moderate
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('npm-audit.json', 'utf8');
+            const data = JSON.parse(raw);
+            const v = (data.metadata && data.metadata.vulnerabilities) || {};
+            const critical = Number(v.critical || 0);
+            const high = Number(v.high || 0);
+            const moderate = Number(v.moderate || 0);
+            const low = Number(v.low || 0);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `critical=${critical}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `high=${high}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `moderate=${moderate}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `low=${low}\n`);
+          "
         continue-on-error: true
       
       - name: Setup .NET
@@ -35,21 +50,85 @@ jobs:
       - name: Restore backend dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
       
-      - name: Check for vulnerable packages
+      - name: Check for vulnerable backend packages (collect)
         id: dotnet-audit
-        run: dotnet list package --vulnerable backend/PriorityHub.Api/PriorityHub.Api.csproj
+        run: |
+          dotnet list backend/PriorityHub.Api/PriorityHub.Api.csproj package --vulnerable --include-transitive --format json > dotnet-vuln.json || true
+          node -e "
+            const fs = require('fs');
+            const toNum = (n) => Number(n || 0);
+            const raw = fs.readFileSync('dotnet-vuln.json', 'utf8');
+            const data = JSON.parse(raw);
+
+            let critical = 0;
+            let high = 0;
+            let moderate = 0;
+            let low = 0;
+
+            const visit = (value) => {
+              if (Array.isArray(value)) {
+                value.forEach(visit);
+                return;
+              }
+              if (value && typeof value === 'object') {
+                const sev = String(value.severity || '').toLowerCase();
+                if (sev === 'critical') critical += 1;
+                else if (sev === 'high') high += 1;
+                else if (sev === 'moderate' || sev === 'medium') moderate += 1;
+                else if (sev === 'low') low += 1;
+
+                Object.values(value).forEach(visit);
+              }
+            };
+
+            visit(data);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `critical=${toNum(critical)}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `high=${toNum(high)}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `moderate=${toNum(moderate)}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `low=${toNum(low)}\n`);
+          "
         continue-on-error: true
+
+      - name: Enforce vulnerability policy
+        id: enforce
+        run: |
+          npm_critical=${{ steps.npm-audit.outputs.critical || 0 }}
+          npm_high=${{ steps.npm-audit.outputs.high || 0 }}
+          npm_moderate=${{ steps.npm-audit.outputs.moderate || 0 }}
+
+          dotnet_critical=${{ steps.dotnet-audit.outputs.critical || 0 }}
+          dotnet_high=${{ steps.dotnet-audit.outputs.high || 0 }}
+          dotnet_moderate=${{ steps.dotnet-audit.outputs.moderate || 0 }}
+
+          high_critical_total=$((npm_critical + npm_high + dotnet_critical + dotnet_high))
+          moderate_total=$((npm_moderate + dotnet_moderate))
+
+          echo "high_critical_total=${high_critical_total}" >> "$GITHUB_OUTPUT"
+          echo "moderate_total=${moderate_total}" >> "$GITHUB_OUTPUT"
+
+          if [ "$moderate_total" -gt 0 ]; then
+            echo "::warning::Detected ${moderate_total} moderate vulnerabilities. Review and patch soon."
+          fi
+
+          if [ "$high_critical_total" -gt 0 ]; then
+            echo "::error::Detected ${high_critical_total} high/critical vulnerabilities. Failing build."
+            exit 1
+          fi
+
+          echo "No high/critical vulnerabilities detected."
       
       - name: Report vulnerabilities on PR
-        if: failure() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && (steps.enforce.outputs.high_critical_total != '0' || steps.enforce.outputs.moderate_total != '0')
         uses: actions/github-script@v7
         with:
           script: |
+            const highCritical = '${{ steps.enforce.outputs.high_critical_total }}';
+            const moderate = '${{ steps.enforce.outputs.moderate_total }}';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '⚠️ Dependency vulnerabilities detected. Run `npm audit` and `dotnet list package --vulnerable` locally to review and update.'
+              body: `⚠️ Dependency vulnerabilities detected.\n\n- High/Critical: ${highCritical}\n- Moderate: ${moderate}\n\nRun \`npm audit\` and \`dotnet list backend/PriorityHub.Api/PriorityHub.Api.csproj package --vulnerable --include-transitive\` locally to review and update.`
             })
 
   secret-scanning:
@@ -67,7 +146,6 @@ jobs:
           base: ${{ github.event.repository.default_branch || 'main' }}
           head: HEAD
           extra_args: --debug --only-verified
-        continue-on-error: true
 
   mcp-advisory-check:
     runs-on: ubuntu-latest
