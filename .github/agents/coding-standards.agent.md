@@ -1,11 +1,7 @@
 ---
-agent: coding-standards
+name: coding-standards
 description: "Agent responsible for enforcing coding standards via linting and formatting checks"
-applyTo:
-  - files:
-      - ".github/workflows/coding-standards.yml"
-      - ".eslintrc.json"
-      - "backend/stylecop.json"
+target: vscode
 ---
 
 # Coding Standards Agent
@@ -60,9 +56,9 @@ applyTo:
 3. **Required status:** Can be configured as required before merge (optional)
 
 ## Configuration References
-- Frontend: [.eslintrc.json](.eslintrc.json)
-- Backend: [backend/stylecop.json](backend/stylecop.json)
-- Workflow: [.github/workflows/coding-standards.yml](.github/workflows/coding-standards.yml)
+- Frontend: [../../.eslintrc.json](../../.eslintrc.json)
+- Backend: [../../backend/stylecop.json](../../backend/stylecop.json)
+- Workflow: [../workflows/coding-standards.yml](../workflows/coding-standards.yml)
 
 ## Escalation
 - **Critical:** Readability or maintainability issue → Create GitHub issue with "code-style" label
