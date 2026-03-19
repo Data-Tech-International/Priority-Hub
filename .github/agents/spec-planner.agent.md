@@ -1,13 +1,7 @@
 ---
-agent: spec-planner
+name: spec-planner
 description: "Agent responsible for turning approved specifications into actionable implementation plans"
-applyTo:
-  - files:
-      - "plans/specifications/**"
-      - "plans/*-plan.md"
-      - ".github/workflows/spec-intake.yml"
-      - ".github/workflows/spec-plan.yml"
-      - ".github/workflows/spec-implementation-bootstrap.yml"
+target: vscode
 ---
 
 # Spec Planner Agent
