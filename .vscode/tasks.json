@@ -10,13 +10,11 @@
       "group": "build",
       "problemMatcher": [
         {
-          "pattern": [
-            {
-              "regexp": "^(.*)$",
-              "file": 1,
-              "message": 1
-            }
-          ],
+          "owner": "priority-hub-full",
+          "pattern": {
+            "regexp": "^(.*)$",
+            "message": 1
+          },
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
@@ -33,13 +31,11 @@
       "isBackground": true,
       "problemMatcher": [
         {
-          "pattern": [
-            {
-              "regexp": "^(.*)$",
-              "file": 1,
-              "message": 1
-            }
-          ],
+          "owner": "priority-hub-client",
+          "pattern": {
+            "regexp": "^(.*)$",
+            "message": 1
+          },
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
