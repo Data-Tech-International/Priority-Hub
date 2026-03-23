@@ -46,6 +46,7 @@ public sealed class BoardConnection
     public string Owner { get; set; } = string.Empty;
     public string SyncStatus { get; set; } = "connected";
     public int LastSyncMinutesAgo { get; set; }
+    public int? FetchedItemCount { get; set; }
 }
 
 public sealed class WorkItem
