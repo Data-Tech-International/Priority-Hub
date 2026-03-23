@@ -138,15 +138,31 @@ See [.github/agents/](.github/agents/) for detailed agent behaviors and [.github
 
 Major changes follow a strict lifecycle so implementation always starts from a specification:
 
-1. Create a GitHub issue using the `Specification Request` template (label: `specification`).
-2. Workflow `.github/workflows/spec-intake.yml` captures the issue as markdown in `plans/specifications/` and adds label `needs-plan`.
-3. Workflow `.github/workflows/spec-plan.yml` generates a plan file in `plans/` and updates the issue with label `plan-proposed`.
-4. After review, add label `plan-approved` to the specification issue.
-5. Workflow `.github/workflows/spec-implementation-bootstrap.yml` automatically creates:
-   - an implementation issue,
-   - a feature branch,
+1. **Draft spec** — Create a GitHub issue using the `Specification Request` template (label: `specification`). You can draft specs interactively using VS Code Copilot Chat Plan mode.
+2. **Capture** — Workflow `spec-intake.yml` persists the issue as markdown in `plans/specifications/` and adds label `needs-plan`.
+3. **Plan** — Workflow `spec-plan.yml` generates an implementation plan in `plans/` and labels the issue `plan-proposed`.
+4. **Review** — Review the plan in VS Code Copilot Chat or on GitHub. When satisfied, add label `plan-approved`.
+5. **Bootstrap** — Workflow `spec-implementation-bootstrap.yml` automatically creates:
+   - an implementation issue (assigned to spec author + `copilot`),
+   - a feature branch from `main`,
    - and a draft PR targeting `main`.
-6. The implementation agent executes work on that branch and must include code, tests, and documentation updates.
+6. **Implement** — GitHub Copilot Coding Agent picks up the implementation issue, reads `AGENTS.md` for conventions, and implements code, tests, and documentation on the feature branch.
+7. **Review PR** — Review the draft PR in VS Code or on GitHub. Use `/review` for self-check before merging. CI workflows validate linting, security, and test coverage automatically.
+
+```
+YOU (VS Code)                    GITHUB AUTOMATION               COPILOT CODING AGENT
+───────────────                  ─────────────────               ────────────────────
+1. Draft specification        →  2. Capture spec file
+                                 3. Propose plan
+4. Review & approve plan      →  5. Create issue + branch + PR
+                                                              →  6. Implement code/tests/docs
+7. Review & merge PR          ←                               ←  PR ready for review
+```
+
+**Key files:**
+- `AGENTS.md` — Instructions for GitHub Copilot Coding Agent
+- `.github/copilot-setup-steps.yml` — Agent environment setup (Node 20, .NET 10)
+- `.github/agents/*.agent.md` — VS Code Copilot Chat agent definitions
 
 This process ensures traceability from specification to plan to implementation and keeps planning artifacts in the repository.
 

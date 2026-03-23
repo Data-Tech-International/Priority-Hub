@@ -1,11 +1,7 @@
 ---
-agent: test-coverage
+name: test-coverage
 description: "Agent responsible for test execution, coverage collection, and coverage threshold enforcement"
-applyTo:
-  - files:
-      - ".github/workflows/test-coverage.yml"
-      - "package.json"
-      - "backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj"
+target: vscode
 ---
 
 # Test Coverage Agent
@@ -27,7 +23,7 @@ npm run test:coverage # Generate coverage report
 
 **Configuration:**
 - Test files: `src/**/*.test.js` or `src/**/*.test.jsx`
-- Setup: [src/test/setupTests.js](src/test/setupTests.js)
+- Setup: [src/test/setupTests.js](../../src/test/setupTests.js)
 - Coverage instrument: `@vitest/coverage-v8`
 - HTML report: `coverage/index.html`
 
@@ -41,7 +37,7 @@ dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 ```
 
 **Configuration:**
-- Test project: [backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj](backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj)
+- Test project: [backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj](../../backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj)
 - Coverage tool: Coverlet (part of xUnit integration)
 - Mocks: HttpClient mocked for API calls
 
@@ -140,10 +136,10 @@ Coverage delta vs main:
    - Comment with improvement notice if +5% better
 
 ## Configuration References
-- Frontend config: [package.json](package.json) (test scripts)
-- Frontend coverage: [vite.config.js](vite.config.js) (coverage.include, threshold)
-- Backend config: [backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj](backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj)
-- Workflow: [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml)
+- Frontend config: [package.json](../../package.json) (test scripts)
+- Frontend coverage: [vite.config.js](../../vite.config.js) (coverage.include, threshold)
+- Backend config: [backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj](../../backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj)
+- Workflow: [.github/workflows/test-coverage.yml](../workflows/test-coverage.yml)
 - Threshold env var: `${{ env.COVERAGE_THRESHOLD }}` (default: 60%)
 
 ## Local Development
