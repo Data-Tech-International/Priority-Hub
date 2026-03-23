@@ -1,12 +1,7 @@
 ---
-agent: security
+name: security
 description: "Agent responsible for vulnerability detection, dependency auditing, and secret scanning"
-applyTo:
-  - files:
-      - ".github/workflows/security.yml"
-      - ".github/mcp-config.json"
-      - "package.json"
-      - "backend/PriorityHub.Api/PriorityHub.Api.csproj"
+target: vscode
 ---
 
 # Security Agent
@@ -85,10 +80,10 @@ curl -X POST https://mcp.context7.com/mcp \
 3. Block merge if critical issues
 
 ## Configuration References
-- Audit config: [package.json](package.json)
-- Backend NuGet: [backend/PriorityHub.Api/PriorityHub.Api.csproj](backend/PriorityHub.Api/PriorityHub.Api.csproj)
-- MCP config: [.github/mcp-config.json](.github/mcp-config.json)
-- Workflow: [.github/workflows/security.yml](.github/workflows/security.yml)
+- Audit config: [package.json](../../package.json)
+- Backend NuGet: [backend/PriorityHub.Api/PriorityHub.Api.csproj](../../backend/PriorityHub.Api/PriorityHub.Api.csproj)
+- MCP config: [.github/mcp-config.json](../mcp-config.json)
+- Workflow: [.github/workflows/security.yml](../workflows/security.yml)
 
 ## Escalation Paths
 
