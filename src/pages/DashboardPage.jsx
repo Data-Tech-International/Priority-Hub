@@ -425,6 +425,13 @@ export default function DashboardPage() {
                           {formatProviderName(board.provider)} · {board.projectName}
                         </p>
                         <p>{board.workspaceName}</p>
+                        {board.syncStatus === 'connected' && board.fetchedItemCount != null ? (
+                          <p className="connector-hint">
+                            {board.fetchedItemCount === 0
+                              ? 'No items matched the query. Check your filter settings.'
+                              : `${board.fetchedItemCount} item${board.fetchedItemCount === 1 ? '' : 's'} fetched`}
+                          </p>
+                        ) : null}
                       </article>
                     ))}
 

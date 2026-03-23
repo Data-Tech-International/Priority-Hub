@@ -55,6 +55,23 @@ public sealed class ConnectorHttpTests
         Assert.Equal("Build the thing", result.WorkItems[0].Title);
         Assert.Single(result.BoardConnections);
         Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+        Assert.Equal(1, result.BoardConnections[0].FetchedItemCount);
+    }
+
+    [Fact]
+    public async Task AzureDevOps_EmptyWiqlResult_SetsFetchedItemCountToZero()
+    {
+        var wiqlResponse = OkJson("""{"workItems":[]}""");
+
+        var connector = new AzureDevOpsConnector(ClientWith(wiqlResponse));
+        var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "pat", wiql = "SELECT [System.Id] FROM WorkItems WHERE [State] = 'Never'", enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Empty(result.WorkItems);
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+        Assert.Equal(0, result.BoardConnections[0].FetchedItemCount);
     }
 
     [Fact]
