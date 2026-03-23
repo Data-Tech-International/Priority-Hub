@@ -53,7 +53,7 @@ jobs:
               owner: repo.owner,
               repo: repo.repo,
               title: `Implement spec #${issue.number}: ${issue.title}`,
-              assignees: [issue.user.login],
+              assignees: [issue.user.login, 'copilot'],
               labels: ['implementation', 'agent-ready'],
               body: [
                 `## Source specification`,
