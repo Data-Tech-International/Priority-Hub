@@ -101,6 +101,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
 
             if (ids.Length == 0)
             {
+                boardConnection.FetchedItemCount = 0;
                 result.BoardConnections.Add(boardConnection);
                 return result;
             }
@@ -131,6 +132,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
                 });
             }
 
+            boardConnection.FetchedItemCount = result.WorkItems.Count;
             result.BoardConnections.Add(boardConnection);
         }
         catch (Exception exception)
