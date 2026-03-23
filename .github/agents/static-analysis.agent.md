@@ -1,11 +1,7 @@
 ---
-agent: static-analysis
+name: static-analysis
 description: "Agent responsible for code quality metrics, complexity analysis, and static code inspection"
-applyTo:
-  - files:
-      - ".github/workflows/static-analysis.yml"
-      - "backend/PriorityHub.Api/PriorityHub.Api.csproj"
-      - "vite.config.js"
+target: vscode
 ---
 
 # Static Code Analysis Agent
@@ -20,7 +16,7 @@ applyTo:
    - Severity levels: Error, Warning, Info, Hidden
 
 2. **StyleCop Analyzers:** Code style and ordering rules
-   - Configuration: [backend/stylecop.json](backend/stylecop.json)
+   - Configuration: [backend/stylecop.json](../../backend/stylecop.json)
    - Errors: Fail build if high severity
    - Warnings: Report but don't fail
 
@@ -112,10 +108,10 @@ grep -r "console\." src/ --include="*.jsx" --include="*.js"
 3. Can comment with: `@copilot suggest-refactor` for suggestions
 
 ## Configuration References
-- Backend build: [backend/PriorityHub.Api/PriorityHub.Api.csproj](backend/PriorityHub.Api/PriorityHub.Api.csproj)
-- StyleCop rules: [backend/stylecop.json](backend/stylecop.json)
-- ESLint rules: [.eslintrc.json](.eslintrc.json)
-- Workflow: [.github/workflows/static-analysis.yml](.github/workflows/static-analysis.yml)
+- Backend build: [backend/PriorityHub.Api/PriorityHub.Api.csproj](../../backend/PriorityHub.Api/PriorityHub.Api.csproj)
+- StyleCop rules: [backend/stylecop.json](../../backend/stylecop.json)
+- ESLint rules: [.eslintrc.json](../../.eslintrc.json)
+- Workflow: [.github/workflows/static-analysis.yml](../workflows/static-analysis.yml)
 
 ## Metrics Dashboard
 

@@ -29,7 +29,9 @@
 - Git hygiene: ensure all local config files are gitignored, commit with clear messages, and maintain a clean commit history.
 - Specification: the README should serve as the single source of truth for how to set up, run, and use the app, while the plans/ directory should contain detailed implementation plans for each major feature or change.
 - Spec-first workflow: each major change must start from a GitHub issue labeled `specification`. Implementation begins only after a generated plan exists and the issue has label `plan-approved`.
-- Implementation handoff: once plan is approved, automation creates an implementation issue, feature branch, and draft PR. The assigned agent must deliver code, tests, and docs in that branch.
+- Implementation handoff: once plan is approved, automation creates an implementation issue, feature branch, and draft PR. The implementation issue is assigned to both the spec author and `copilot` (GitHub Copilot Coding Agent). The agent reads `AGENTS.md` for project conventions and implements code, tests, and docs on the feature branch.
+- Agent setup: `.github/copilot-setup-steps.yml` defines the environment (Node 20, .NET 10) that the Coding Agent uses before starting work.
+- Interactive review: use VS Code Copilot Chat Plan mode for spec drafting and plan review. Use `/review` on PRs for self-check before human review.
 - Communication: if any part of the requirements or implementation is unclear, ask for clarification before proceeding. It's better to ask questions early than to make incorrect assumptions.
 - Verification: after completing each plan, verify that the implemented feature works as expected and update the README with any new setup or usage instructions related to that feature.
 - Maintenance: periodically review the README and Plans/ directory to ensure they remain accurate and up to date with the current state of the project. Remove or archive any outdated plans or instructions.
