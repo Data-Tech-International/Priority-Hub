@@ -119,6 +119,39 @@ public sealed class ConnectorHttpTests
             issue.Message.Contains("sign-in", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task AzureDevOps_OauthTokenPreferredOverPat()
+    {
+        AuthenticationHeaderValue? capturedAuth = null;
+        var wiqlResponse = OkJson("""{"workItems":[]}""");
+        var handler = new CapturingHttpMessageHandler(wiqlResponse, r => capturedAuth = r.Headers.Authorization);
+
+        var connector = new AzureDevOpsConnector(new HttpClient(handler));
+        var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "my-pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
+
+        await connector.FetchConnectionAsync(config, "oauth-bearer-token", CancellationToken.None);
+
+        Assert.NotNull(capturedAuth);
+        Assert.Equal("Bearer", capturedAuth!.Scheme);
+        Assert.Equal("oauth-bearer-token", capturedAuth.Parameter);
+    }
+
+    [Fact]
+    public async Task AzureDevOps_PatUsedWhenNoOauthToken()
+    {
+        AuthenticationHeaderValue? capturedAuth = null;
+        var wiqlResponse = OkJson("""{"workItems":[]}""");
+        var handler = new CapturingHttpMessageHandler(wiqlResponse, r => capturedAuth = r.Headers.Authorization);
+
+        var connector = new AzureDevOpsConnector(new HttpClient(handler));
+        var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "my-pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
+
+        await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.NotNull(capturedAuth);
+        Assert.Equal("Basic", capturedAuth!.Scheme);
+    }
+
     // ── GitHub ───────────────────────────────────────────────────────────────
 
     [Fact]
@@ -289,5 +322,15 @@ internal sealed class NeverCalledHttpMessageHandler : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         throw new InvalidOperationException($"Unexpected HTTP call to {request.RequestUri}");
+    }
+}
+
+/// <summary>Returns a fixed response while capturing the request for assertions.</summary>
+internal sealed class CapturingHttpMessageHandler(HttpResponseMessage response, Action<HttpRequestMessage> onRequest) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        onRequest(request);
+        return Task.FromResult(response);
     }
 }
