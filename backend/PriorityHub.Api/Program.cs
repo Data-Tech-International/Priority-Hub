@@ -356,9 +356,10 @@ static async Task<Dictionary<string, string>> GetOauthTokensByProviderAsync(Clai
             "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation",
             cancellationToken);
 
-        tokens["azure-devops"] = string.IsNullOrWhiteSpace(azureDevOpsAccessToken)
-            ? accessToken
-            : azureDevOpsAccessToken;
+        if (!string.IsNullOrWhiteSpace(azureDevOpsAccessToken))
+        {
+            tokens["azure-devops"] = azureDevOpsAccessToken;
+        }
     }
 
     if (string.Equals(provider, "github", StringComparison.OrdinalIgnoreCase))
