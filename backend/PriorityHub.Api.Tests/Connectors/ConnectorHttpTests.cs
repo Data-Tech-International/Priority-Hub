@@ -99,6 +99,26 @@ public sealed class ConnectorHttpTests
         Assert.Contains(result.Issues, issue => issue.Message.Contains("token") || issue.Message.Contains("access"));
     }
 
+    [Fact]
+    public async Task AzureDevOps_HtmlResponseInsteadOfJson_ReturnsNeedsAuthWithHelpfulMessage()
+    {
+        var htmlResponse = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent("<html><body>Sign in to your account</body></html>", Encoding.UTF8, "text/html")
+        };
+
+        var connector = new AzureDevOpsConnector(ClientWith(htmlResponse));
+        var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "expired-token", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("needs-auth", result.BoardConnections[0].SyncStatus);
+        Assert.Contains(result.Issues, issue =>
+            issue.Message.Contains("HTML") &&
+            issue.Message.Contains("sign-in", StringComparison.OrdinalIgnoreCase));
+    }
+
     // ── GitHub ───────────────────────────────────────────────────────────────
 
     [Fact]
