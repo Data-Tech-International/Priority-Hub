@@ -1,37 +1,12 @@
 {
   "name": "priority-hub",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
+  "version": "0.2.0",
   "scripts": {
-    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:client": "vite",
-    "dev:server": "dotnet watch --project backend/PriorityHub.Api/PriorityHub.Api.csproj run",
-    "build": "dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj && vite build",
-    "preview": "vite preview",
-    "test": "vitest run --pool=forks --poolOptions.forks.singleFork=true",
-    "test:watch": "vitest --pool=forks --poolOptions.forks.singleFork=true",
-    "test:coverage": "vitest run --coverage --pool=forks --poolOptions.forks.singleFork=true",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.1"
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/coverage-v8": "^2.1.9",
-    "concurrently": "^9.1.2",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.34.1",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "jsdom": "^25.0.1",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.9"
+    "dev": "dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run",
+    "build": "dotnet build PriorityHub.sln",
+    "test": "dotnet test PriorityHub.sln",
+    "test:api": "dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj",
+    "test:ui": "dotnet test backend/PriorityHub.Ui.Tests/PriorityHub.Ui.Tests.csproj"
   }
 }
