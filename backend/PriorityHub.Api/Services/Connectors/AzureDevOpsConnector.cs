@@ -81,11 +81,6 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
 
         try
         {
-            if (string.IsNullOrWhiteSpace(connection.PersonalAccessToken) && string.IsNullOrWhiteSpace(bearerToken))
-            {
-                throw new InvalidOperationException("Azure DevOps authentication required. Sign in with Microsoft to grant access, or add a Personal Access Token for this connection.");
-            }
-
             var authHeader = BuildAuthorizationHeader(connection, bearerToken);
             using var wiqlRequest = new HttpRequestMessage(HttpMethod.Post, BuildWiqlUrl(connection))
             {
@@ -200,13 +195,18 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
 
     private static AuthenticationHeaderValue BuildAuthorizationHeader(AzureDevOpsConnection connection, string? bearerToken)
     {
+        if (!string.IsNullOrWhiteSpace(bearerToken))
+        {
+            return new AuthenticationHeaderValue("Bearer", bearerToken);
+        }
+
         if (!string.IsNullOrWhiteSpace(connection.PersonalAccessToken))
         {
             var encodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($":{connection.PersonalAccessToken}"));
             return new AuthenticationHeaderValue("Basic", encodedToken);
         }
 
-        return new AuthenticationHeaderValue("Bearer", bearerToken);
+        throw new InvalidOperationException("Azure DevOps authentication required. Sign in with Microsoft to grant access, or add a Personal Access Token for this connection.");
     }
 
     internal static string MapStatus(string? value)
