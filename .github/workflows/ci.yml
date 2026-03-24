@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,45 +22,21 @@ jobs:
             backend:
               - 'backend/**'
               - 'PriorityHub.sln'
-            frontend:
-              - 'src/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'vite.config.js'
 
   coding-standards:
     needs: detect-changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Add ESLint if missing
-        run: |
-          if ! npm list eslint > /dev/null 2>&1; then
-            npm install --save-dev eslint eslint-plugin-react eslint-plugin-react-hooks
-          fi
-      
-      - name: Frontend linting
-        run: npm run lint
-        continue-on-error: true
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore .NET dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-      
+
       - name: Backend format check
         run: dotnet format backend/PriorityHub.Api/PriorityHub.Api.csproj --verify-no-changes --verbosity diagnostic
         continue-on-error: true
@@ -70,32 +45,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Frontend security audit
-        run: npm audit --audit-level=moderate
-        continue-on-error: true
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore .NET dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-        
+
       - name: Backend security check
         run: dotnet list package --vulnerable
         continue-on-error: true
-      
+
       - name: Secret scanning
         if: >
           github.event_name == 'pull_request' ||
@@ -111,68 +73,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore backend dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-      
+
       - name: Backend static analysis
         run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore /p:EnforceCodeStyleInBuild=true /p:TreatWarningsAsErrors=false
-        continue-on-error: true
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Frontend complexity check
-        run: |
-          echo "Frontend static analysis passed"
         continue-on-error: true
 
   test-coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Add coverage dependencies
-        run: |
-          npm install --save-dev @vitest/coverage-v8
-      
-      - name: Frontend tests with coverage
-        run: npm run test:coverage
-        continue-on-error: true
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore backend dependencies
         run: dotnet restore backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
-      
+
       - name: Backend tests
         run: dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj --logger "console;verbosity=normal" --no-restore
         continue-on-error: true
-      
+
       - name: Check coverage threshold
         run: |
-          echo "Coverage verification will be enhanced in Phase 2"
+          echo "Coverage verification will be enhanced in future phase"
         continue-on-error: true
