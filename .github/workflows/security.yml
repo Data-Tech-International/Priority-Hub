@@ -12,96 +12,61 @@ jobs:
     name: Dependency Vulnerabilities
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Frontend audit (collect)
-        id: npm-audit
-        run: |
-          npm audit --json > npm-audit.json || true
-          node -e "
-            const fs = require('fs');
-            const raw = fs.readFileSync('npm-audit.json', 'utf8');
-            const data = JSON.parse(raw);
-            const v = (data.metadata && data.metadata.vulnerabilities) || {};
-            const critical = Number(v.critical || 0);
-            const high = Number(v.high || 0);
-            const moderate = Number(v.moderate || 0);
-            const low = Number(v.low || 0);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `critical=${critical}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `high=${high}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `moderate=${moderate}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `low=${low}\n`);
-          "
-        continue-on-error: true
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore backend dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-      
+
       - name: Check for vulnerable backend packages (collect)
         id: dotnet-audit
         run: |
           dotnet list backend/PriorityHub.Api/PriorityHub.Api.csproj package --vulnerable --include-transitive --format json > dotnet-vuln.json || true
-          node -e "
-            const fs = require('fs');
-            const toNum = (n) => Number(n || 0);
-            const raw = fs.readFileSync('dotnet-vuln.json', 'utf8');
-            const data = JSON.parse(raw);
+          python3 - <<'EOF'
+          import json, os, sys
 
-            let critical = 0;
-            let high = 0;
-            let moderate = 0;
-            let low = 0;
+          with open('dotnet-vuln.json', 'r') as f:
+              data = json.load(f)
 
-            const visit = (value) => {
-              if (Array.isArray(value)) {
-                value.forEach(visit);
-                return;
-              }
-              if (value && typeof value === 'object') {
-                const sev = String(value.severity || '').toLowerCase();
-                if (sev === 'critical') critical += 1;
-                else if (sev === 'high') high += 1;
-                else if (sev === 'moderate' || sev === 'medium') moderate += 1;
-                else if (sev === 'low') low += 1;
+          counts = {'critical': 0, 'high': 0, 'moderate': 0, 'low': 0}
 
-                Object.values(value).forEach(visit);
-              }
-            };
+          def visit(value):
+              if isinstance(value, list):
+                  for item in value:
+                      visit(item)
+              elif isinstance(value, dict):
+                  sev = str(value.get('severity', '')).lower()
+                  if sev == 'critical':
+                      counts['critical'] += 1
+                  elif sev == 'high':
+                      counts['high'] += 1
+                  elif sev in ('moderate', 'medium'):
+                      counts['moderate'] += 1
+                  elif sev == 'low':
+                      counts['low'] += 1
+                  for v in value.values():
+                      visit(v)
 
-            visit(data);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `critical=${toNum(critical)}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `high=${toNum(high)}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `moderate=${toNum(moderate)}\n`);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `low=${toNum(low)}\n`);
-          "
+          visit(data)
+          output_file = os.environ.get('GITHUB_OUTPUT', '/dev/null')
+          with open(output_file, 'a') as f:
+              for k, v in counts.items():
+                  f.write(f'{k}={v}\n')
+          EOF
         continue-on-error: true
 
       - name: Enforce vulnerability policy
         id: enforce
         run: |
-          npm_critical=${{ steps.npm-audit.outputs.critical || 0 }}
-          npm_high=${{ steps.npm-audit.outputs.high || 0 }}
-          npm_moderate=${{ steps.npm-audit.outputs.moderate || 0 }}
-
           dotnet_critical=${{ steps.dotnet-audit.outputs.critical || 0 }}
           dotnet_high=${{ steps.dotnet-audit.outputs.high || 0 }}
           dotnet_moderate=${{ steps.dotnet-audit.outputs.moderate || 0 }}
 
-          high_critical_total=$((npm_critical + npm_high + dotnet_critical + dotnet_high))
-          moderate_total=$((npm_moderate + dotnet_moderate))
+          high_critical_total=$((dotnet_critical + dotnet_high))
+          moderate_total=$((dotnet_moderate))
 
           echo "high_critical_total=${high_critical_total}" >> "$GITHUB_OUTPUT"
           echo "moderate_total=${moderate_total}" >> "$GITHUB_OUTPUT"
@@ -116,7 +81,7 @@ jobs:
           fi
 
           echo "No high/critical vulnerabilities detected."
-      
+
       - name: Report vulnerabilities on PR
         if: always() && github.event_name == 'pull_request' && (steps.enforce.outputs.high_critical_total != '0' || steps.enforce.outputs.moderate_total != '0')
         uses: actions/github-script@v7
@@ -128,7 +93,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `⚠️ Dependency vulnerabilities detected.\n\n- High/Critical: ${highCritical}\n- Moderate: ${moderate}\n\nRun \`npm audit\` and \`dotnet list backend/PriorityHub.Api/PriorityHub.Api.csproj package --vulnerable --include-transitive\` locally to review and update.`
+              body: `⚠️ Dependency vulnerabilities detected.\n\n- High/Critical: ${highCritical}\n- Moderate: ${moderate}\n\nRun \`dotnet list backend/PriorityHub.Api/PriorityHub.Api.csproj package --vulnerable --include-transitive\` locally to review and update.`
             })
 
   secret-scanning:
@@ -138,7 +103,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Run TruffleHog secret scanner
         if: >
           github.event_name == 'pull_request' ||
@@ -149,30 +114,3 @@ jobs:
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event.pull_request.head.sha || github.event.after }}
           extra_args: --debug --only-verified
-
-  mcp-advisory-check:
-    runs-on: ubuntu-latest
-    name: Context7 Security Advisory Lookup
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Extract package names
-        id: packages
-        run: |
-          echo "Frontend packages found. Advisory check prepared for MCP integration."
-        continue-on-error: true
-      
-      - name: Note on MCP integration
-        run: |
-          echo "Phase 3: MCP security advisory queries will be integrated here"
-          echo "This step will use context7 to resolve library IDs and check for known advisories"

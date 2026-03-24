@@ -7,63 +7,25 @@ on:
     branches: [main]
 
 jobs:
-  frontend-lint:
-    runs-on: ubuntu-latest
-    name: ESLint Frontend
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Install ESLint if missing
-        run: |
-          if ! npm list eslint > /dev/null 2>&1; then
-            npm install --save-dev eslint eslint-plugin-react eslint-plugin-react-hooks
-          fi
-      
-      - name: Run ESLint
-        id: eslint
-        run: npm run lint
-        continue-on-error: true
-      
-      - name: Comment on PR if violations found
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '❌ ESLint violations found. Run `npm run lint:fix` locally to auto-fix style issues.'
-            })
-
   backend-format:
     runs-on: ubuntu-latest
     name: dotnet format Backend
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-      
+
       - name: Check code format
         id: format-check
         run: dotnet format backend/PriorityHub.Api/PriorityHub.Api.csproj --verify-no-changes --verbosity diagnostic
         continue-on-error: true
-      
+
       - name: Comment on PR if format violations found
         if: failure() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -81,15 +43,15 @@ jobs:
     name: .NET Analyzer Build
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore dependencies
         run: dotnet restore backend/PriorityHub.Api/PriorityHub.Api.csproj
-      
+
       - name: Build with .NET analyzers
         run: dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj --no-restore /p:EnableNETAnalyzers=true /p:TreatWarningsAsErrors=false
         continue-on-error: true

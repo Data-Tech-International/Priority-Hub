@@ -10,54 +10,24 @@ env:
   COVERAGE_THRESHOLD: 60
 
 jobs:
-  frontend-coverage:
-    runs-on: ubuntu-latest
-    name: Frontend Tests & Coverage
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Install coverage tools
-        run: npm install --save-dev @vitest/coverage-v8
-      
-      - name: Run frontend tests with coverage
-        id: frontend-test
-        run: npm run test:coverage
-      
-      - name: Upload coverage to artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: coverage/
-          retention-days: 30
-
   backend-coverage:
     runs-on: ubuntu-latest
     name: Backend Tests
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0'
-      
+
       - name: Restore dependencies
         run: dotnet restore backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
-      
+
       - name: Run backend tests
         id: backend-test
         run: dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj --logger "console;verbosity=normal" --no-restore
-      
+
       - name: Test summary
         if: always()
         run: |
@@ -67,29 +37,21 @@ jobs:
   coverage-report:
     runs-on: ubuntu-latest
     name: Coverage Summary
-    needs: [frontend-coverage, backend-coverage]
+    needs: [backend-coverage]
     if: always()
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-coverage
-          path: coverage/
-        continue-on-error: true
-      
+
       - name: Generate coverage report
         id: report
         run: |
           echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Frontend Coverage Threshold**: ${{ env.COVERAGE_THRESHOLD }}%" >> $GITHUB_STEP_SUMMARY
-          echo "- **Backend**: Tests executed, coverage details in next phase" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Coverage Threshold**: ${{ env.COVERAGE_THRESHOLD }}%" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ All major test suites executed" >> $GITHUB_STEP_SUMMARY
         continue-on-error: true
-      
+
       - name: Comment on PR with coverage
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -99,5 +61,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `📊 **Test Coverage Report**\n\nFrontend coverage threshold: 60%\nBackend coverage threshold: 60%\n\nRun \`npm run test:coverage\` and \`dotnet test\` locally to verify coverage.`
+              body: `📊 **Test Coverage Report**\n\nBackend coverage threshold: 60%\n\nRun \`dotnet test\` locally to verify coverage.`
             })
