@@ -1,6 +1,6 @@
 # Plan: Migrate Frontend from Vite + React to Blazor
 
-## Status: Complete
+## Status: In Progress (Phase 8 — CI pipeline updated)
 **Date:** March 2026
 **Owner:** Development team
 
