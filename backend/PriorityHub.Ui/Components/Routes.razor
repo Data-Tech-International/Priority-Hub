@@ -1,0 +1,18 @@
+﻿<Router AppAssembly="typeof(PriorityHub.Ui.Components.App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+            <Authorizing>
+                <p class="eyebrow">Checking your session…</p>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <p>Page not found. <a href="/">Go to Dashboard</a></p>
+        </LayoutView>
+    </NotFound>
+</Router>
