@@ -50,6 +50,35 @@
       "command": "dotnet",
       "args": ["build", "backend/PriorityHub.Api/PriorityHub.Api.csproj"],
       "group": "build"
+    },
+    {
+      "label": "Build Priority Hub Blazor",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "backend/PriorityHub.Ui/PriorityHub.Ui.csproj"],
+      "group": "build"
+    },
+    {
+      "label": "Run Priority Hub Blazor",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["watch", "--project", "backend/PriorityHub.Ui", "run"],
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": [
+        {
+          "owner": "priority-hub-blazor",
+          "pattern": {
+            "regexp": "^(.*)$",
+            "message": 1
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Now listening on"
+          }
+        }
+      ]
     }
   ]
 }
