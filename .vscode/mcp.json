@@ -1,0 +1,12 @@
+{
+    "servers": {
+        "github": {
+            "type": "stdio",
+            "command": "gh",
+            "args": [
+                "copilot",
+                "mcp"
+            ]
+        }
+    }
+}

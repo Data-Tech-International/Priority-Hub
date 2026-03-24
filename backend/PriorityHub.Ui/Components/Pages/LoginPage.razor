@@ -1,0 +1,39 @@
+@page "/login"
+@attribute [AllowAnonymous]
+
+<PageTitle>Sign in — Priority Hub</PageTitle>
+
+<div class="app-shell">
+    <main class="login-page">
+        <section class="login-card">
+            <p class="eyebrow">Priority Hub</p>
+            <h1>Sign in to access your unified priority dashboard.</h1>
+            <p class="login-copy">
+                Use Microsoft or GitHub to unlock the workspace. Microsoft sign-in
+                can also be used for Azure DevOps connections without storing a PAT.
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <section class="status-banner status-error">
+                    <strong>Authentication check failed.</strong>
+                    <span>@Error</span>
+                </section>
+            }
+
+            <div class="login-actions">
+                <a class="login-provider-button microsoft" href="/api/auth/login/microsoft">
+                    Sign in with Microsoft
+                </a>
+                <a class="login-provider-button github" href="/api/auth/login/github">
+                    Sign in with GitHub
+                </a>
+            </div>
+        </section>
+    </main>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+}

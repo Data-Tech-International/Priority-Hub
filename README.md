@@ -1,6 +1,6 @@
 # Priority Hub
 
-Priority Hub is a Vite + React JavaScript application with an ASP.NET Core 10 backend-for-frontend for managing personal priorities across Azure DevOps, Jira, and Trello from a single view.
+Priority Hub is a Blazor Server application backed by ASP.NET Core 10 for managing personal priorities across Azure DevOps, Jira, and Trello from a single view.
 
 ## What is included
 
@@ -16,17 +16,19 @@ Priority Hub is a Vite + React JavaScript application with an ASP.NET Core 10 ba
 
 ## Runtime architecture
 
-Provider credentials for Azure DevOps, Jira, and Trello do not live in frontend code. The browser calls the ASP.NET Core backend service on `/api/dashboard`, and the backend:
+The Blazor Server UI runs on the same ASP.NET Core host as the backend services. Components inject connector services directly through dependency injection — there is no separate HTTP API boundary between UI and backend logic.
+
+Provider credentials for Azure DevOps, Jira, and Trello do not live in frontend code. The host process:
 
 - Stores provider credentials in a local config file managed through the UI.
 - Calls each provider API server-side.
 - Normalizes external payloads into the shared work item shape.
-- Exposes a safe UI-facing API for this React app.
+- Streams results to the browser over a persistent SignalR connection.
 
 ## UI configuration
 
-1. Start the app with `npm.cmd run dev`.
-2. Open the configuration studio in the dashboard UI.
+1. Start the app with `npm run dev` (or `dotnet watch --project backend/PriorityHub.Ui`).
+2. Open the configuration studio in the Settings page.
 3. Add one or more connector instances for Azure DevOps, Jira, and Trello.
 4. Save the configuration to persist it into `config/providers.local.json`.
 
@@ -36,7 +38,7 @@ The configuration UI only asks for required fields:
 - Jira: connection name, base URL, email, API token, JQL.
 - Trello: connection name, board ID, API key, token.
 
-Client-side validators block save until required fields are present and Jira base URLs and emails are valid.
+Validators block save until required fields are present and Jira base URLs and emails are valid.
 
 `config/providers.local.json` is gitignored and is intended for local secrets only.
 
@@ -56,60 +58,87 @@ Client-side validators block save until required fields are present and Jira bas
 
 ## Local development
 
-1. Install dependencies with `npm.cmd install`.
-2. Start the frontend and backend together with `npm.cmd run dev`.
-3. Build the frontend and backend with `npm.cmd run build`.
-4. Start only the ASP.NET Core backend watcher with `npm.cmd run dev:server`.
-5. Start only the frontend with `npm.cmd run dev:client`.
+### Prerequisites
+
+- .NET 10 SDK
+- No Node.js runtime required for the app itself (npm scripts are convenience wrappers for dotnet commands)
+
+### Quick start
+
+```bash
+# Start the Blazor Server app with hot reload
+npm run dev
+
+# Or use dotnet directly
+dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
+```
+
+### Build
+
+```bash
+npm run build          # Build entire solution
+dotnet build PriorityHub.sln
+```
+
+### Project structure
+
+```
+backend/
+  PriorityHub.Api/            # Shared backend services, models, and connectors
+  PriorityHub.Api.Tests/      # xUnit backend tests
+  PriorityHub.Ui/             # Blazor Server frontend
+    Components/               # Razor components (NavBar, HelpPanel, TagFilter)
+      Layout/                 # MainLayout and reconnect modal
+      Pages/                  # Route-level pages (Dashboard, Settings, Login)
+    Services/                 # UI-specific services (WorkItemRanker, HelpContent)
+    wwwroot/                  # Static assets (CSS, fonts, JS interop)
+  PriorityHub.Ui.Tests/       # bUnit component tests
+config/                       # Local provider config (gitignored)
+plans/                        # Specifications and implementation plans
+```
 
 ## Debugging in VS Code
 
-- Use the task `Run Priority Hub` for a full-stack background run.
-- Use the launch profile `Priority Hub Full Stack` to start the backend debugger and open the frontend in Edge.
+- Use the task **Run Priority Hub** for a `dotnet watch` background run.
+- Use the launch profile **Priority Hub** to start the Blazor Server debugger and auto-open in your browser.
+- Use the launch profile **Priority Hub Backend (API only)** to debug the API project standalone.
 
 ## Code Quality & Testing
 
 ### Local Testing
 
-**Frontend:** Run tests with Vitest + React Testing Library
+**Backend:** Run all tests with xUnit + bUnit
 ```bash
-npm run test                # Run once
-npm run test:watch         # Watch mode
-npm run test:coverage      # Generate coverage report for core frontend library modules (threshold: 60%)
-```
+npm run test            # Run all tests (API + UI)
+npm run test:api        # API tests only
+npm run test:ui         # Blazor component tests only
 
-**Backend:** Run tests with xUnit
-```bash
+# Or use dotnet directly
+dotnet test PriorityHub.sln
 dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
+dotnet test backend/PriorityHub.Ui.Tests/PriorityHub.Ui.Tests.csproj
 ```
 
 ### Code Linting
 
-**Frontend:** ESLint enforces React and style rules
-```bash
-npm run lint       # Check for violations
-npm run lint:fix   # Auto-fix style issues
-```
-
 **Backend:** dotnet format + StyleCop analyzers
 ```bash
-dotnet format backend/PriorityHub.Api/PriorityHub.Api.csproj  # Auto-format
-dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj /p:EnableNETAnalyzers=true  # Run analyzer checks
+dotnet format PriorityHub.sln                                          # Auto-format
+dotnet build PriorityHub.sln /p:EnableNETAnalyzers=true                # Run analyzer checks
 ```
 
 ### CI/CD Pipeline
 
 All code pushed to the `main` branch and PRs automatically run four GitHub workflows:
 
-1. **Coding Standards** — ESLint + dotnet format
+1. **Coding Standards** — dotnet format
    - Enforces consistent code style
    - Fails on readability errors, warns on style violations
-   - Can auto-fix many issues with `npm run lint:fix` or `dotnet format`
 
 2. **Security Scanning** — Dependency audit + secret detection
-   - Checks npm and NuGet packages for known CVEs
+   - Checks NuGet packages for known CVEs
    - Detects accidentally committed secrets (API keys, tokens)
-   - Uses TruffleHog + context7 MCP for advisory lookup
+   - Uses TruffleHog for secret scanning
    - **Fails on:** Critical/High CVEs, verified secrets
    - **Warns on:** Moderate vulnerabilities
 
@@ -117,13 +146,11 @@ All code pushed to the `main` branch and PRs automatically run four GitHub workf
    - Enforces .NET design patterns and best practices
    - Measures code complexity (max 10 per method)
    - Detects dead code and architectural violations
-   - Reports metrics for each build
 
-4. **Test Coverage** — Frontend + backend test execution
+4. **Test Coverage** — Backend + Blazor component test execution
    - Runs all unit tests
    - Collects coverage metrics
-   - **Fails if:** Frontend core library coverage or backend test run falls below configured standards
-   - **Reports:** Coverage delta vs main branch on each PR
+   - **Fails if:** Test coverage falls below configured standards
 
 **Agent Automation:**  
 Each workflow is backed by a specialized agent that:
@@ -168,18 +195,14 @@ This process ensures traceability from specification to plan to implementation a
 
 ### Configuration Files
 
-- **`.eslintrc.json`** — Frontend linting rules (max-warnings: 0, strict equality, no console.log)
 - **`backend/stylecop.json`** — Backend naming and documentation standards
 - **`.editorconfig`** — Cross-editor consistency (indentation, line endings)
 - **`.github/pull_request_template.md`** — PR checklist covering tests, security, documentation
-- **`vite.config.js`** — Vitest coverage config (60% threshold, v8 provider)
 
 ## Current behavior without configuration
 
 If `config/providers.local.json` is missing or empty, the backend still returns a valid dashboard payload with no connections or work items. This lets the UI load cleanly while you configure live provider access from the dashboard itself.
 
 ## Future roadmap
-
-- **[Blazor migration](Plans/blazor-migration.md)** — Migrate the Vite + React frontend to Blazor Server, co-located in the ASP.NET Core solution and sharing services directly without an HTTP API boundary.
 
 To start work on a planned change, follow the specification-first workflow described in the **Code Quality & Testing** section above.
