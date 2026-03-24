@@ -106,6 +106,19 @@ The Priority Hub CI/CD pipeline integrates two MCP (Model Context Protocol) serv
 3. Artifact storage via GitHub Actions (no MCP needed)
 ```
 
+### Implementation Orchestrator Agent
+
+**Required:** github  
+**Flow:**
+```
+1. Detect spec issue with plan-approved label
+2. Create implementation issue referencing spec and plan
+3. Create feature branch: feat/<issue-number>-<short-slug>
+4. Create draft PR via github.create-pull-request()
+5. Assign implementation issue to spec author + copilot
+6. Add PR comment via github.add-pr-comment() confirming handoff
+```
+
 ---
 
 ## Setup
@@ -137,6 +150,28 @@ env:
 ```
 
 GitHub tools are auto-available in `actions/github-script@v7`.
+
+### 4. Local Development (VS Code)
+
+The GitHub MCP server is configured in `.vscode/mcp.json` for local Copilot Chat use.
+
+**Prerequisites:**
+- Node.js 20+ installed (for `npx`)
+- A GitHub Personal Access Token with these scopes:
+  - `repo` — full repository access
+  - `issues:write` — create and update issues
+  - `pull_requests:write` — create and update PRs
+
+**How it works:**
+- VS Code prompts for your GitHub PAT at runtime via a secure input dialog
+- The PAT is never stored in config files or committed to version control
+- The server runs as a stdio process using `@modelcontextprotocol/server-github`
+
+**Verification:**
+1. Open VS Code in the PriorityHub workspace
+2. Open Copilot Chat and check the MCP server list — `github` should appear
+3. Start the server — you will be prompted for your PAT
+4. Test with a simple query that uses GitHub context
 
 ---
 

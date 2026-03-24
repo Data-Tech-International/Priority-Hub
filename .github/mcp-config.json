@@ -14,7 +14,9 @@
       ]
     },
     "github": {
-      "type": "github",
+      "type": "builtin",
+      "scope": "repository",
+      "authentication": "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",
       "tools": [
         "create-issue",
         "create-pull-request",

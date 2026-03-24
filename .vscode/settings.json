@@ -3,6 +3,7 @@
         "npm.cmd": true,
         "dotnet test": true,
         "dotnet build": true,
-        "npx.cmd": true
+        "npx.cmd": true,        
+        "chat.mcp.enabled": true
     }
 }
