@@ -1,0 +1,51 @@
+@inject NavigationManager Navigation
+
+<header class="nav-bar">
+    <div class="nav-bar-inner">
+        <nav class="nav-links">
+            <NavLink href="/" Match="NavLinkMatch.All" class="nav-link" ActiveClass="is-active">
+                Dashboard
+            </NavLink>
+            <NavLink href="/settings" class="nav-link" ActiveClass="is-active">
+                Settings
+            </NavLink>
+        </nav>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-user">
+                    @{
+                        var name = context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+                        var email = context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                        var picture = context.User.FindFirst("picture")?.Value;
+                        var provider = context.User.FindFirst("provider")?.Value ?? "";
+                        var displayName = name ?? email ?? "Signed in";
+                        var displayEmail = email ?? $"{WorkItemRanker.FormatProviderName(provider)} account";
+                    }
+                    @if (!string.IsNullOrWhiteSpace(picture))
+                    {
+                        <img class="nav-avatar" src="@picture" alt="@displayName" />
+                    }
+                    else
+                    {
+                        <span class="nav-avatar nav-avatar-fallback">
+                            @(displayName[..1].ToUpperInvariant())
+                        </span>
+                    }
+                    <div class="nav-user-info">
+                        <strong>@displayName</strong>
+                        <span>@displayEmail</span>
+                    </div>
+                    <form method="post" action="/api/auth/logout">
+                        <AntiforgeryToken />
+                        <button class="signout-button" type="submit">
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+</header>
+
+@code {
+}

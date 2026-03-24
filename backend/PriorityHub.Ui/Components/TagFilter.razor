@@ -1,0 +1,91 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="tag-filter" @ref="_containerRef">
+    <span class="tag-filter-label">Tags</span>
+    <button type="button"
+            class="tag-filter-toggle@(_open ? " is-open" : "")"
+            @onclick="() => _open = !_open">
+        @Label
+    </button>
+    @if (_open)
+    {
+        <div class="tag-filter-dropdown">
+            @if (SelectedTags.Count > 0)
+            {
+                <button type="button" class="tag-filter-clear" @onclick="ClearSelection">
+                    Clear selection
+                </button>
+            }
+            @if (AvailableTags.Count == 0)
+            {
+                <p class="tag-filter-empty">No tags in current data.</p>
+            }
+            else
+            {
+                @foreach (var tag in AvailableTags)
+                {
+                    <label class="tag-filter-option">
+                        <input type="checkbox"
+                               checked="@SelectedTags.Contains(tag)"
+                               @onchange="() => ToggleTag(tag)" />
+                        <span>@tag</span>
+                    </label>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> AvailableTags { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<string> SelectedTags { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> OnTagsChange { get; set; }
+
+    private bool _open;
+    private ElementReference _containerRef;
+    private DotNetObjectReference<TagFilter>? _dotNetRef;
+
+    private string Label => SelectedTags.Count == 0
+        ? "All tags"
+        : SelectedTags.Count == 1
+            ? SelectedTags[0]
+            : $"Tags ({SelectedTags.Count})";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("PriorityHub.registerOutsideClick", _containerRef, _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnOutsideClick()
+    {
+        _open = false;
+        StateHasChanged();
+    }
+
+    private async Task ToggleTag(string tag)
+    {
+        var next = new List<string>(SelectedTags);
+        if (next.Contains(tag))
+            next.Remove(tag);
+        else
+            next.Add(tag);
+        await OnTagsChange.InvokeAsync(next);
+    }
+
+    private async Task ClearSelection()
+    {
+        _open = false;
+        await OnTagsChange.InvokeAsync([]);
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+}

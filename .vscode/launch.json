@@ -2,7 +2,24 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Priority Hub Backend",
+      "name": "Priority Hub",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "Build Priority Hub Blazor",
+      "program": "${workspaceFolder}/backend/PriorityHub.Ui/bin/Debug/net10.0/PriorityHub.Ui.dll",
+      "cwd": "${workspaceFolder}/backend/PriorityHub.Ui",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on:\\s+(https?://\\S+)"
+      }
+    },
+    {
+      "name": "Priority Hub Backend (API only)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build Priority Hub Backend",
@@ -17,20 +34,6 @@
         "action": "openExternally",
         "pattern": "Now listening on:\\s+(https?://\\S+)"
       }
-    },
-    {
-      "name": "Priority Hub Frontend",
-      "type": "msedge",
-      "request": "launch",
-      "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/src",
-      "preLaunchTask": "Run Priority Hub Web"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Priority Hub Full Stack",
-      "configurations": ["Priority Hub Backend", "Priority Hub Frontend"]
     }
   ]
 }

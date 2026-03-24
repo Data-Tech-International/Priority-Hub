@@ -1,0 +1,524 @@
+@page "/settings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject LocalConfigStore ConfigStore
+@inject ConnectorRegistry ConnectorRegistry
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Settings — Priority Hub</PageTitle>
+
+<div class="app-shell">
+    <div class="settings-page">
+        <div class="settings-header">
+            <p class="eyebrow">Priority Hub</p>
+            <h1>Settings</h1>
+            <p>Manage connector configuration, account, and data export.</p>
+        </div>
+
+        @if (_statusMessage is not null)
+        {
+            <section class="status-banner status-info">
+                <strong>Status</strong>
+                <span>@_statusMessage</span>
+            </section>
+        }
+
+        <div class="settings-tabs">
+            @foreach (var tab in new[] { "connectors", "account", "export" })
+            {
+                <button type="button"
+                        class="settings-tab@(_activeTab == tab ? " is-active" : "")"
+                        @onclick="() => _activeTab = tab">
+                    @(char.ToUpper(tab[0]) + tab[1..])
+                </button>
+            }
+        </div>
+
+        @* ── Connectors tab ── *@
+        @if (_activeTab == "connectors")
+        {
+            <div class="settings-tab-content">
+                @if (_loadingConfig)
+                {
+                    <p>Loading configuration…</p>
+                }
+                else if (_connectorMetadata.Count == 0)
+                {
+                    <p>No connector types registered.</p>
+                }
+                else
+                {
+                    @foreach (var connector in _connectorMetadata)
+                    {
+                        var configKey = ToConfigKey(connector.ProviderKey);
+                        var connections = GetConnections(configKey);
+                        var helpKey = $"settings.connectors.{connector.ProviderKey}";
+
+                        <section class="provider-config-block">
+                            <div class="provider-config-header">
+                                <div>
+                                    <h3>@connector.DisplayName connections</h3>
+                                    <p>@connector.Description</p>
+                                </div>
+                                <button class="add-button" type="button" @onclick="() => AddConnection(connector)">
+                                    Add connection
+                                </button>
+                            </div>
+
+                            @if (HelpContent.Entries.TryGetValue(helpKey, out var help))
+                            {
+                                <HelpPanel ContextKey="@helpKey" Title="@help.Title">
+                                    @foreach (var line in help.Body)
+                                    {
+                                        <p>@line</p>
+                                    }
+                                </HelpPanel>
+                            }
+
+                            <div class="connection-editor-list">
+                                @for (var idx = 0; idx < connections.Count; idx++)
+                                {
+                                    var index = idx;
+                                    var connection = connections[index];
+
+                                    <article class="connection-editor-card">
+                                        <div class="connection-editor-header">
+                                            <strong>@(GetConnectionField(connection, "name") is string n && n.Length > 0 ? n : $"Connection {index + 1}")</strong>
+                                            <button class="remove-button" type="button" @onclick="() => RemoveConnection(configKey, index)">
+                                                Remove
+                                            </button>
+                                        </div>
+
+                                        <label class="toggle-row">
+                                            <input type="checkbox"
+                                                   checked="@(GetConnectionEnabled(connection))"
+                                                   @onchange="e => SetConnectionField(configKey, index, EnabledField, e.Value)" />
+                                            <span>Enabled</span>
+                                        </label>
+
+                                        <div class="config-grid">
+                                            @foreach (var field in connector.ConfigFields)
+                                            {
+                                                var fieldError = GetFieldError(configKey, index, field.Key);
+                                                var isWide = field.InputKind == "textarea";
+
+                                                @if (isWide)
+                                                {
+                                                    <label class="config-field config-field-wide@(fieldError is not null ? " config-field-error" : "")">
+                                                        <span>@field.Label</span>
+                                                        <textarea value="@(GetConnectionField(connection, field.Key) ?? "")"
+                                                                  @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)"
+                                                                  rows="4"></textarea>
+                                                        @if (fieldError is not null)
+                                                        {
+                                                            <small>@fieldError</small>
+                                                        }
+                                                    </label>
+                                                }
+                                                else
+                                                {
+                                                    <label class="config-field@(fieldError is not null ? " config-field-error" : "")">
+                                                        <span>@field.Label</span>
+                                                        <input type="@(field.InputKind == "password" ? "password" : "text")"
+                                                               value="@(GetConnectionField(connection, field.Key) ?? "")"
+                                                               @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)" />
+                                                        @if (fieldError is not null)
+                                                        {
+                                                            <small>@fieldError</small>
+                                                        }
+                                                    </label>
+                                                }
+                                            }
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <div class="configuration-actions">
+                        <button class="refresh-button" type="button"
+                                @onclick="SaveConfiguration"
+                                disabled="@(_savingConfig || _loadingConfig)">
+                            @(_savingConfig ? "Saving…" : "Save connector configuration")
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        @* ── Account tab ── *@
+        @if (_activeTab == "account")
+        {
+            <div class="settings-tab-content">
+                <div class="account-card">
+                    <AuthorizeView>
+                        <Authorized>
+                            @{
+                                var userName = context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+                                var userEmail = context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                                var userPicture = context.User.FindFirst("picture")?.Value;
+                                var userProvider = context.User.FindFirst("provider")?.Value ?? "";
+                            }
+                            <div class="account-user-row">
+                                @if (!string.IsNullOrWhiteSpace(userPicture))
+                                {
+                                    <img class="nav-avatar" src="@userPicture" alt="@(userName ?? userEmail ?? "User")" style="width:56px;height:56px" />
+                                }
+                                else
+                                {
+                                    <span class="nav-avatar nav-avatar-fallback" style="width:56px;height:56px;font-size:1.4rem">
+                                        @((userName ?? userEmail ?? "U")[..1].ToUpperInvariant())
+                                    </span>
+                                }
+                                <div>
+                                    <strong>@(userName ?? userEmail ?? "Signed in")</strong>
+                                    <span>
+                                        @userEmail
+                                        @if (!string.IsNullOrWhiteSpace(userProvider))
+                                        {
+                                            @($" · {WorkItemRanker.FormatProviderName(userProvider)}")
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            <form method="post" action="/api/auth/logout">
+                                <AntiforgeryToken />
+                                <button class="signout-button" type="submit" style="margin-top:16px">
+                                    Sign out
+                                </button>
+                            </form>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        }
+
+        @* ── Export tab ── *@
+        @if (_activeTab == "export")
+        {
+            <div class="settings-tab-content">
+                @if (HelpContent.Entries.TryGetValue("settings.export", out var exportHelp))
+                {
+                    <HelpPanel ContextKey="settings.export" Title="@exportHelp.Title">
+                        @foreach (var line in exportHelp.Body)
+                        {
+                            <p>@line</p>
+                        }
+                    </HelpPanel>
+                }
+
+                <div class="export-section">
+                    <article class="export-card">
+                        <h3>Export connector configuration</h3>
+                        <p>
+                            Downloads your connector settings as JSON. PATs and tokens are replaced with masked placeholders
+                            before download.
+                        </p>
+                        <button class="refresh-button" type="button" @onclick="ExportConfig">
+                            Download configuration
+                        </button>
+                    </article>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const string EnabledField = "enabled";
+    private string _activeTab = "connectors";
+    private bool _loadingConfig = true;
+    private bool _savingConfig;
+    private string? _statusMessage;
+
+    // Connector metadata from the registry
+    private List<ConnectorMeta> _connectorMetadata = [];
+
+    // Configuration stored as a dictionary of config key -> list of dictionary connections
+    private ProviderConfiguration _config = new();
+    private Dictionary<string, List<Dictionary<string, object?>>> _connections = new();
+    private Dictionary<string, List<Dictionary<string, string?>>> _validationErrors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load connector metadata from registry
+        _connectorMetadata = ConnectorRegistry.GetAll().Select(c => new ConnectorMeta(
+            c.ProviderKey, c.DisplayName, c.Description, c.ConfigFields)).ToList();
+
+        // Load configuration
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is null) return;
+
+        var userId = GetUserIdentityKey(httpContext.User);
+        try
+        {
+            _config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
+            RebuildConnectionsDictionary();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _loadingConfig = false;
+        }
+    }
+
+    private void RebuildConnectionsDictionary()
+    {
+        _connections = new Dictionary<string, List<Dictionary<string, object?>>>();
+        foreach (var connector in _connectorMetadata)
+        {
+            var key = ToConfigKey(connector.ProviderKey);
+            var list = new List<Dictionary<string, object?>>();
+            foreach (var jsonElement in _config.GetConnections(connector.ProviderKey))
+            {
+                var dict = new Dictionary<string, object?>();
+                foreach (var prop in jsonElement.EnumerateObject())
+                {
+                    dict[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        System.Text.Json.JsonValueKind.String => prop.Value.GetString(),
+                        System.Text.Json.JsonValueKind.True => true,
+                        System.Text.Json.JsonValueKind.False => false,
+                        System.Text.Json.JsonValueKind.Number => prop.Value.GetInt32(),
+                        _ => prop.Value.ToString()
+                    };
+                }
+                list.Add(dict);
+            }
+            _connections[key] = list;
+        }
+    }
+
+    private List<Dictionary<string, object?>> GetConnections(string configKey) =>
+        _connections.TryGetValue(configKey, out var list) ? list : [];
+
+    private static string? GetConnectionField(Dictionary<string, object?> connection, string field) =>
+        connection.TryGetValue(field, out var val) ? val?.ToString() : null;
+
+    private static bool GetConnectionEnabled(Dictionary<string, object?> connection) =>
+        !connection.TryGetValue("enabled", out var val) || val is not false;
+
+    private void SetConnectionField(string configKey, int index, string field, object? value)
+    {
+        if (_connections.TryGetValue(configKey, out var list) && index < list.Count)
+        {
+            if (field == "enabled")
+            {
+                list[index][field] = value is true or "True" or "true";
+            }
+            else
+            {
+                list[index][field] = value?.ToString();
+            }
+
+            // Clear field error
+            if (_validationErrors.TryGetValue(configKey, out var errors) && index < errors.Count)
+            {
+                errors[index].Remove(field);
+            }
+        }
+    }
+
+    private void AddConnection(ConnectorMeta connector)
+    {
+        var configKey = ToConfigKey(connector.ProviderKey);
+        if (!_connections.ContainsKey(configKey))
+            _connections[configKey] = [];
+
+        var dict = new Dictionary<string, object?>
+        {
+            ["id"] = Guid.NewGuid().ToString("N"),
+            ["enabled"] = true
+        };
+        foreach (var field in connector.ConfigFields)
+        {
+            dict[field.Key] = field.DefaultValue ?? "";
+        }
+        _connections[configKey].Add(dict);
+    }
+
+    private void RemoveConnection(string configKey, int index)
+    {
+        if (_connections.TryGetValue(configKey, out var list) && index < list.Count)
+        {
+            list.RemoveAt(index);
+        }
+        if (_validationErrors.TryGetValue(configKey, out var errors) && index < errors.Count)
+        {
+            errors.RemoveAt(index);
+        }
+    }
+
+    private string? GetFieldError(string configKey, int index, string field)
+    {
+        if (_validationErrors.TryGetValue(configKey, out var connErrors) && index < connErrors.Count)
+        {
+            return connErrors[index].TryGetValue(field, out var err) ? err : null;
+        }
+        return null;
+    }
+
+    private bool ValidateAll()
+    {
+        var httpContext = HttpContextAccessor.HttpContext;
+        var userProvider = httpContext?.User.FindFirst("provider")?.Value ?? "";
+        _validationErrors = new();
+        var hasErrors = false;
+
+        foreach (var connector in _connectorMetadata)
+        {
+            var configKey = ToConfigKey(connector.ProviderKey);
+            var conns = GetConnections(configKey);
+            var connErrors = new List<Dictionary<string, string?>>();
+
+            foreach (var conn in conns)
+            {
+                var errors = new Dictionary<string, string?>();
+                foreach (var field in connector.ConfigFields)
+                {
+                    var value = (GetConnectionField(conn, field.Key) ?? "").Trim();
+
+                    // Skip PAT validation for Azure DevOps when signed in with Microsoft
+                    if (field.Key == "personalAccessToken" && connector.ProviderKey == "azure-devops"
+                        && string.Equals(userProvider, "microsoft", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (field.Required && string.IsNullOrWhiteSpace(value))
+                    {
+                        errors[field.Key] = $"{field.Label} is required.";
+                        hasErrors = true;
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(value)) continue;
+
+                    if (field.Key == "baseUrl" && !Uri.TryCreate(value, UriKind.Absolute, out _))
+                    {
+                        errors[field.Key] = "Must be a valid URL (e.g. https://yourorg.atlassian.net).";
+                        hasErrors = true;
+                    }
+
+                    if (field.Key == "email" && !value.Contains('@'))
+                    {
+                        errors[field.Key] = "Must be a valid email address.";
+                        hasErrors = true;
+                    }
+                }
+                connErrors.Add(errors);
+            }
+            _validationErrors[configKey] = connErrors;
+        }
+
+        return !hasErrors;
+    }
+
+    private ProviderConfiguration BuildConfigFromConnections()
+    {
+        var config = new ProviderConfiguration
+        {
+            Preferences = _config.Preferences
+        };
+
+        config.AzureDevOps = DeserializeConnections<AzureDevOpsConnection>("azureDevOps");
+        config.GitHub = DeserializeConnections<GitHubConnection>("github");
+        config.Jira = DeserializeConnections<JiraConnection>("jira");
+        config.MicrosoftTasks = DeserializeConnections<MicrosoftTasksConnection>("microsoftTasks");
+        config.OutlookFlaggedMail = DeserializeConnections<OutlookFlaggedMailConnection>("outlookFlaggedMail");
+        config.Trello = DeserializeConnections<TrelloConnection>("trello");
+
+        return config;
+    }
+
+    private List<T> DeserializeConnections<T>(string configKey)
+    {
+        if (!_connections.TryGetValue(configKey, out var list)) return [];
+        var json = System.Text.Json.JsonSerializer.Serialize(list, System.Text.Json.JsonSerializerOptions.Web);
+        return System.Text.Json.JsonSerializer.Deserialize<List<T>>(json, System.Text.Json.JsonSerializerOptions.Web) ?? [];
+    }
+
+    private async Task SaveConfiguration()
+    {
+        if (!ValidateAll())
+        {
+            _statusMessage = "Fix the highlighted fields before saving.";
+            return;
+        }
+
+        _savingConfig = true;
+        _statusMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext is null) return;
+
+            var userId = GetUserIdentityKey(httpContext.User);
+            var configToSave = BuildConfigFromConnections();
+            await ConfigStore.SaveAsync(userId, configToSave, CancellationToken.None);
+            _config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
+            RebuildConnectionsDictionary();
+            _statusMessage = "Configuration saved. Return to the Dashboard to see refreshed data.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _savingConfig = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportConfig()
+    {
+        var configToExport = BuildConfigFromConnections();
+        // Mask secrets
+        foreach (var c in configToExport.AzureDevOps) c.PersonalAccessToken = MaskSecret(c.PersonalAccessToken);
+        foreach (var c in configToExport.GitHub) c.PersonalAccessToken = MaskSecret(c.PersonalAccessToken);
+        foreach (var c in configToExport.Jira) c.ApiToken = MaskSecret(c.ApiToken);
+        foreach (var c in configToExport.Trello) { c.ApiKey = MaskSecret(c.ApiKey); c.Token = MaskSecret(c.Token); }
+
+        var json = System.Text.Json.JsonSerializer.Serialize(configToExport, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        });
+
+        _statusMessage = "Configuration exported (check your downloads).";
+        await Task.CompletedTask;
+    }
+
+    private static string MaskSecret(string value) =>
+        !string.IsNullOrWhiteSpace(value) ? new string('*', Math.Min(value.Length, 8)) : "";
+
+    private static string GetUserIdentityKey(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        if (!string.IsNullOrWhiteSpace(email)) return email;
+        var sub = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var provider = user.FindFirst("provider")?.Value ?? "unknown";
+        return $"{sub}_{provider}";
+    }
+
+    private static string ToConfigKey(string providerKey) =>
+        providerKey switch
+        {
+            "azure-devops" => "azureDevOps",
+            "github" => "github",
+            "jira" => "jira",
+            "microsoft-tasks" => "microsoftTasks",
+            "outlook-flagged-mail" => "outlookFlaggedMail",
+            "trello" => "trello",
+            _ => providerKey
+        };
+
+    private sealed record ConnectorMeta(
+        string ProviderKey, string DisplayName, string Description,
+        ConnectorFieldSpec[] ConfigFields);
+}

@@ -1,0 +1,519 @@
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject DashboardAggregator Aggregator
+@inject LocalConfigStore ConfigStore
+@inject WorkItemRanker Ranker
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="app-shell">
+    <main class="dashboard">
+        <section class="hero-panel">
+            <div class="hero-copy">
+                <p class="eyebrow">Priority Hub</p>
+                <h1>Manually ordered priorities across Azure DevOps, GitHub, Jira, and Trello.</h1>
+                <p class="hero-text">
+                    Add only the fields each connector truly needs, validate them in the browser, then drag cards into your
+                    own persistent cross-source order.
+                </p>
+                <div class="hero-actions">
+                    <button class="refresh-button" @onclick="RefreshDashboard" type="button">
+                        @(_loading ? "Refreshing…" : "Refresh live data")
+                    </button>
+                    <span class="generated-at">
+                        @if (_dashboard.GeneratedAt is not null)
+                        {
+                            <text>Last aggregated @DateTimeOffset.Parse(_dashboard.GeneratedAt).ToLocalTime().ToString("g")</text>
+                        }
+                        else
+                        {
+                            <text>Waiting for server data</text>
+                        }
+                    </span>
+                </div>
+
+                <div class="fetch-progress-panel" aria-live="polite">
+                    <div class="fetch-progress-topline">
+                        <strong>@(_loading ? "Fetching live connector data" : "Live connector refresh complete")</strong>
+                        <span>
+                            @if (_progress.TotalConnections > 0)
+                            {
+                                @($"{_progress.CompletedConnections}/{_progress.TotalConnections} sources")
+                            }
+                            else
+                            {
+                                <text>No enabled sources</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="fetch-progress-track"
+                         role="progressbar"
+                         aria-valuemin="0"
+                         aria-valuemax="100"
+                         aria-valuenow="@ProgressPercent">
+                        <span class="fetch-progress-fill" style="width: @(ProgressPercent)%"></span>
+                    </div>
+                    <p class="fetch-progress-text">
+                        @(string.IsNullOrWhiteSpace(_progress.Message)
+                            ? (_loading ? "Waiting for connector responses." : "All configured connectors are idle.")
+                            : _progress.Message)
+                    </p>
+                </div>
+            </div>
+
+            <div class="hero-metrics">
+                <article class="metric-card accent-sand">
+                    <span class="metric-label">Visible items</span>
+                    <strong>@FilteredItems.Count/@_rankedItems.Count</strong>
+                    <p>Current filtered items over the total fetched queue across all enabled sources.</p>
+                </article>
+                <article class="metric-card accent-terracotta">
+                    <span class="metric-label">Critical now</span>
+                    <strong>@_rankedItems.Count(i => i.Band == "critical")</strong>
+                    <p>Known items follow your manual order. New items stay loud until you place them.</p>
+                </article>
+                <article class="metric-card accent-slate">
+                    <span class="metric-label">Blocked items</span>
+                    <strong>@_rankedItems.Count(i => i.Item.Status == "blocked")</strong>
+                    <p>Cross-provider blockers remain visible in the same queue.</p>
+                </article>
+                <article class="metric-card accent-mint">
+                    <span class="metric-label">New items</span>
+                    <strong>@_rankedItems.Count(i => i.Item.IsNew)</strong>
+                    <p>Newly retrieved items are highlighted and floated to the top until ordered.</p>
+                </article>
+            </div>
+        </section>
+
+        @if (_error is not null)
+        {
+            <section class="status-banner status-error">
+                <strong>Dashboard fetch failed.</strong>
+                <span>@_error</span>
+            </section>
+        }
+
+        @if (_statusMessage is not null)
+        {
+            <section class="status-banner status-info">
+                <strong>Status</strong>
+                <span>@_statusMessage</span>
+            </section>
+        }
+
+        @if (_dashboard.Issues.Count > 0)
+        {
+            <section class="status-banner status-warning">
+                <strong>Some connectors need attention.</strong>
+                <span>
+                    @string.Join(" | ", _dashboard.Issues.Select(i =>
+                        $"{WorkItemRanker.FormatProviderName(i.Provider)} ({i.ConnectionId}): {i.Message}"))
+                </span>
+            </section>
+        }
+
+        <section class="content-grid">
+            <section class="panel filters-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Unified work queue</h2>
+                        <p>Drag cards to keep one manual order across all connected sources.</p>
+                    </div>
+                    <span class="queue-hint">@(_savingOrder ? "Saving order…" : "Drag and drop to reorder")</span>
+                </div>
+
+                <HelpPanel ContextKey="dashboard.overview" Title="@HelpContent.Entries["dashboard.overview"].Title">
+                    @foreach (var line in HelpContent.Entries["dashboard.overview"].Body)
+                    {
+                        <p>@line</p>
+                    }
+                </HelpPanel>
+
+                @if (_loading)
+                {
+                    <div class="queue-streaming-banner">
+                        <strong>Items appear as each source finishes.</strong>
+                        <span>
+                            @if (_progress.TotalConnections > 0)
+                            {
+                                @($"{_progress.CompletedConnections} of {_progress.TotalConnections} connector fetches completed.")
+                            }
+                            else
+                            {
+                                <text>Connector refresh has started.</text>
+                            }
+                        </span>
+                    </div>
+                }
+
+                <HelpPanel ContextKey="dashboard.filters" Title="@HelpContent.Entries["dashboard.filters"].Title">
+                    @foreach (var line in HelpContent.Entries["dashboard.filters"].Body)
+                    {
+                        <p>@line</p>
+                    }
+                </HelpPanel>
+
+                <div class="filters-row">
+                    <label>
+                        <span>Search</span>
+                        <input value="@_search"
+                               @oninput="e => _search = e.Value?.ToString() ?? string.Empty"
+                               placeholder="Search title, ID, or tag" />
+                    </label>
+                    <label>
+                        <span>Provider</span>
+                        <select value="@_selectedProvider" @onchange="OnProviderChanged">
+                            @foreach (var opt in ProviderOptions)
+                            {
+                                <option value="@opt">@(opt == "all" ? "All providers" : WorkItemRanker.FormatProviderName(opt))</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Status</span>
+                        <select value="@_selectedStatus" @onchange="OnStatusChanged">
+                            @foreach (var opt in StatusOptions)
+                            {
+                                <option value="@opt">@(opt == "all" ? "All statuses" : opt)</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Priority band</span>
+                        <select value="@_selectedBand" @onchange="OnBandChanged">
+                            @foreach (var opt in PriorityOptions)
+                            {
+                                <option value="@opt">@(opt == "all" ? "All bands" : WorkItemRanker.FormatPriorityBand(opt))</option>
+                            }
+                        </select>
+                    </label>
+                    <TagFilter AvailableTags="AvailableTags" SelectedTags="_selectedTags" OnTagsChange="OnTagsChanged" />
+                </div>
+
+                <section class="compact-connectors">
+                    <button type="button" class="compact-connectors-toggle" @onclick="() => _showConnectors = !_showConnectors">
+                        <span>
+                            Live connectors: @(_dashboard.BoardConnections.Count > 0
+                                ? $"{_dashboard.BoardConnections.Count(b => b.SyncStatus == "connected")}/{_dashboard.BoardConnections.Count} connected"
+                                : "none configured")
+                        </span>
+                        <span>@(_showConnectors ? "Hide" : "Show")</span>
+                    </button>
+
+                    @if (_showConnectors)
+                    {
+                        <div class="connector-list connector-list-compact">
+                            @foreach (var board in _dashboard.BoardConnections)
+                            {
+                                <article class="connector-card">
+                                    <div class="connector-topline">
+                                        <strong>@board.BoardName</strong>
+                                        <span class="sync-pill sync-@board.SyncStatus">@board.SyncStatus</span>
+                                    </div>
+                                    <p>@WorkItemRanker.FormatProviderName(board.Provider) · @board.ProjectName</p>
+                                    <p>@board.WorkspaceName</p>
+                                    @if (board.SyncStatus == "connected" && board.FetchedItemCount is not null)
+                                    {
+                                        <p class="connector-hint">
+                                            @(board.FetchedItemCount == 0
+                                                ? "No items matched the query. Check your filter settings."
+                                                : $"{board.FetchedItemCount} item{(board.FetchedItemCount == 1 ? "" : "s")} fetched")
+                                        </p>
+                                    }
+                                </article>
+                            }
+
+                            @if (!_loading && _dashboard.BoardConnections.Count == 0)
+                            {
+                                <article class="connector-card">
+                                    <strong>No live connector instances yet.</strong>
+                                    <p>Open Settings to add Azure DevOps projects, Jira queries, or Trello boards.</p>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <div class="item-list">
+                    @if (_loading && FilteredItems.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <h3>Loading live board data.</h3>
+                            <p>The queue will populate incrementally as each connector finishes streaming results.</p>
+                        </div>
+                    }
+
+                    @foreach (var item in FilteredItems)
+                    {
+                        var cardClass = "work-item-card" + (item.Item.IsNew ? " is-new-item" : "") + (_draggedItemId == item.Item.Id ? " is-dragging" : "");
+                        <article class="@cardClass"
+                                 draggable="true"
+                                 @ondragstart="() => _draggedItemId = item.Item.Id"
+                                 @ondragend="() => _draggedItemId = null"
+                                 @ondragover:preventDefault
+                                 @ondrop="() => HandleDropItem(item.Item.Id)">
+                            <div class="work-item-heading">
+                                <div class="work-item-title">
+                                    <h3>@item.Item.Title</h3>
+                                    @if (item.Item.IsNew)
+                                    {
+                                        <span class="new-pill">New item</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(item.Item.SourceUrl))
+                                {
+                                    <a href="@item.Item.SourceUrl"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="item-source-link">
+                                        Open in source
+                                    </a>
+                                }
+                            </div>
+
+                            <div class="tag-row">
+                                @if (item.Item.Tags.Count == 0)
+                                {
+                                    <span class="tag-chip tag-chip-empty">No tags</span>
+                                }
+                                @foreach (var tag in item.Item.Tags)
+                                {
+                                    <span class="tag-chip">@tag</span>
+                                }
+                            </div>
+                        </article>
+                    }
+
+                    @if (!_loading && FilteredItems.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <h3>No work items match the current filters.</h3>
+                            <p>Save provider connections in Settings and refresh the dashboard to start aggregating real data.</p>
+                        </div>
+                    }
+                </div>
+            </section>
+        </section>
+    </main>
+</div>
+
+@code {
+    private static readonly string[] ProviderOptions = ["all", "azure-devops", "github", "jira", "microsoft-tasks", "outlook-flagged-mail", "trello"];
+    private static readonly string[] StatusOptions = ["all", "blocked", "in-progress", "review", "planned", "done"];
+    private static readonly string[] PriorityOptions = ["all", "critical", "focus", "maintain"];
+
+    private DashboardPayload _dashboard = new();
+    private List<string> _orderedItemIds = [];
+    private DashboardProgress _progress = new() { IsComplete = true };
+    private List<RankedWorkItem> _rankedItems = [];
+    private bool _loading = true;
+    private string? _error;
+    private string? _statusMessage;
+    private string _selectedProvider = "all";
+    private string _selectedStatus = "all";
+    private string _selectedBand = "all";
+    private List<string> _selectedTags = [];
+    private string _search = "";
+    private string? _draggedItemId;
+    private bool _savingOrder;
+    private bool _showConnectors;
+    private CancellationTokenSource? _cts;
+
+    private IReadOnlyList<string> AvailableTags =>
+        _dashboard.WorkItems
+            .SelectMany(i => i.Tags)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order()
+            .ToList();
+
+    private List<RankedWorkItem> FilteredItems
+    {
+        get
+        {
+            var query = _search.Trim().ToLowerInvariant();
+            return _rankedItems.Where(i =>
+            {
+                if (_selectedProvider != "all" && i.Item.Provider != _selectedProvider) return false;
+                if (_selectedStatus != "all" && i.Item.Status != _selectedStatus) return false;
+                if (_selectedBand != "all" && i.Band != _selectedBand) return false;
+                if (_selectedTags.Count > 0 && !_selectedTags.Any(t => i.Item.Tags.Contains(t))) return false;
+                if (query.Length > 0 &&
+                    !i.Item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) &&
+                    !i.Item.Id.Contains(query, StringComparison.OrdinalIgnoreCase) &&
+                    !i.Item.Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                    return false;
+                return true;
+            }).ToList();
+        }
+    }
+
+    private int ProgressPercent => _progress.TotalConnections > 0
+        ? (int)Math.Round(100.0 * _progress.CompletedConnections / _progress.TotalConnections)
+        : _loading ? 8 : 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task RefreshDashboard()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+
+        _loading = true;
+        _error = null;
+        _progress = new DashboardProgress { IsComplete = false, Message = "Starting connector refresh." };
+        StateHasChanged();
+
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext is null) return;
+
+            var userId = GetUserIdentityKey(httpContext.User);
+            var oauthTokens = await GetOauthTokensAsync(httpContext, ct);
+
+            await foreach (var update in Aggregator.StreamAsync(userId, oauthTokens, ct))
+            {
+                _dashboard = update.Dashboard;
+                _orderedItemIds = [.. _dashboard.Preferences.OrderedItemIds];
+                _progress = update.Progress;
+                _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDropItem(string targetId)
+    {
+        if (_draggedItemId is null || _draggedItemId == targetId)
+        {
+            _draggedItemId = null;
+            return;
+        }
+
+        var currentVisibleIds = _rankedItems.Select(i => i.Item.Id).ToList();
+        var nextOrderedIds = ReorderVisibleItems(currentVisibleIds, _orderedItemIds, _draggedItemId, targetId);
+        _orderedItemIds = nextOrderedIds;
+        _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+        _savingOrder = true;
+        _statusMessage = null;
+        _draggedItemId = null;
+        StateHasChanged();
+
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext is null) return;
+
+            var userId = GetUserIdentityKey(httpContext.User);
+            var config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
+            config.Preferences = new UserPreferences
+            {
+                OrderedItemIds = nextOrderedIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+            };
+            await ConfigStore.SaveAsync(userId, config, CancellationToken.None);
+            _orderedItemIds = [.. config.Preferences.OrderedItemIds];
+            _statusMessage = "Queue order saved. New items stay highlighted until placed in your manual order.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _savingOrder = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnTagsChanged(List<string> tags) => _selectedTags = tags;
+
+    private void OnProviderChanged(ChangeEventArgs e) => _selectedProvider = e.Value?.ToString() ?? "all";
+    private void OnStatusChanged(ChangeEventArgs e) => _selectedStatus = e.Value?.ToString() ?? "all";
+    private void OnBandChanged(ChangeEventArgs e) => _selectedBand = e.Value?.ToString() ?? "all";
+
+    private static List<string> ReorderVisibleItems(
+        List<string> currentVisibleIds,
+        List<string> existingOrderedIds,
+        string draggedId,
+        string targetId)
+    {
+        var workingIds = new List<string>(currentVisibleIds);
+        var draggedIndex = workingIds.IndexOf(draggedId);
+        var targetIndex = workingIds.IndexOf(targetId);
+
+        if (draggedIndex == -1 || targetIndex == -1 || draggedIndex == targetIndex)
+        {
+            return existingOrderedIds;
+        }
+
+        workingIds.RemoveAt(draggedIndex);
+        workingIds.Insert(targetIndex, draggedId);
+
+        var hiddenIds = existingOrderedIds
+            .Where(id => !currentVisibleIds.Contains(id) && id != draggedId)
+            .ToList();
+
+        workingIds.AddRange(hiddenIds);
+        return workingIds;
+    }
+
+    private static string GetUserIdentityKey(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        if (!string.IsNullOrWhiteSpace(email)) return email;
+        var sub = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var provider = user.FindFirst("provider")?.Value ?? "unknown";
+        return $"{sub}_{provider}";
+    }
+
+    private static async Task<Dictionary<string, string>> GetOauthTokensAsync(HttpContext httpContext, CancellationToken ct)
+    {
+        var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var provider = httpContext.User.FindFirst("provider")?.Value;
+        var accessToken = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.GetTokenAsync(httpContext, "access_token");
+        if (string.IsNullOrWhiteSpace(accessToken)) return tokens;
+
+        if (string.Equals(provider, "microsoft", StringComparison.OrdinalIgnoreCase))
+        {
+            tokens["microsoft-tasks"] = accessToken;
+            tokens["outlook-flagged-mail"] = accessToken;
+            tokens["azure-devops"] = accessToken;
+        }
+
+        if (string.Equals(provider, "github", StringComparison.OrdinalIgnoreCase))
+        {
+            tokens["github"] = accessToken;
+        }
+
+        return tokens;
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}
