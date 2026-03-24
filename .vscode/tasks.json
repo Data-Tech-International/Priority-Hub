@@ -4,65 +4,8 @@
     {
       "label": "Run Priority Hub",
       "type": "shell",
-      "command": "npm.cmd",
-      "args": ["run", "dev"],
-      "isBackground": true,
-      "group": "build",
-      "problemMatcher": [
-        {
-          "owner": "priority-hub-full",
-          "pattern": {
-            "regexp": "^(.*)$",
-            "message": 1
-          },
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": "ready in|Now listening on"
-          }
-        }
-      ]
-    },
-    {
-      "label": "Run Priority Hub Web",
-      "type": "shell",
-      "command": "npm.cmd",
-      "args": ["run", "dev:client"],
-      "isBackground": true,
-      "problemMatcher": [
-        {
-          "owner": "priority-hub-client",
-          "pattern": {
-            "regexp": "^(.*)$",
-            "message": 1
-          },
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": "ready in"
-          }
-        }
-      ]
-    },
-    {
-      "label": "Build Priority Hub Backend",
-      "type": "shell",
       "command": "dotnet",
-      "args": ["build", "backend/PriorityHub.Api/PriorityHub.Api.csproj"],
-      "group": "build"
-    },
-    {
-      "label": "Build Priority Hub Blazor",
-      "type": "shell",
-      "command": "dotnet",
-      "args": ["build", "backend/PriorityHub.Ui/PriorityHub.Ui.csproj"],
-      "group": "build"
-    },
-    {
-      "label": "Run Priority Hub Blazor",
-      "type": "shell",
-      "command": "dotnet",
-      "args": ["watch", "--project", "backend/PriorityHub.Ui", "run"],
+      "args": ["watch", "--project", "backend/PriorityHub.Ui/PriorityHub.Ui.csproj", "run"],
       "isBackground": true,
       "group": "build",
       "problemMatcher": [
@@ -79,6 +22,40 @@
           }
         }
       ]
+    },
+    {
+      "label": "Build Priority Hub",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "PriorityHub.sln"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Build Priority Hub Backend",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "backend/PriorityHub.Api/PriorityHub.Api.csproj"],
+      "group": "build"
+    },
+    {
+      "label": "Build Priority Hub Blazor",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "backend/PriorityHub.Ui/PriorityHub.Ui.csproj"],
+      "group": "build"
+    },
+    {
+      "label": "Test All",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["test", "PriorityHub.sln"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
     }
   ]
 }

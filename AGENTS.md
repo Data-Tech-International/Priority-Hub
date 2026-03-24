@@ -1,21 +1,22 @@
 # Priority Hub — Coding Agent Instructions
 
-You are a coding agent working on Priority Hub, a Vite + React JavaScript frontend with an ASP.NET Core 10 backend-for-frontend that unifies Azure DevOps, Jira, and Trello work items into one personal priority dashboard.
+You are a coding agent working on Priority Hub, a Blazor Server frontend with an ASP.NET Core 10 backend-for-frontend that unifies Azure DevOps, Jira, and Trello work items into one personal priority dashboard.
 
 ## Project Structure
 
 ```
-src/                          # React frontend (Vite, JSX)
-  components/                 # Reusable UI components
-  pages/                      # Route-level page components
-  lib/                        # Utilities, API client, auth, caching
-  contexts/                   # React context providers
-  test/                       # Test setup
 backend/
   PriorityHub.Api/            # ASP.NET Core backend (C#, .NET 10)
     Services/                 # Business logic and connectors
     Models/                   # Shared data models
   PriorityHub.Api.Tests/      # xUnit backend tests
+  PriorityHub.Ui/             # Blazor Server frontend (C#, .NET 10)
+    Components/               # Razor components (NavBar, HelpPanel, TagFilter)
+      Layout/                 # MainLayout, reconnect modal
+      Pages/                  # Route-level pages (Dashboard, Settings, Login)
+    Services/                 # UI-specific services (WorkItemRanker, HelpContent)
+    wwwroot/                  # Static assets (CSS, fonts, JS interop)
+  PriorityHub.Ui.Tests/       # bUnit component tests
 config/                       # Local provider config (gitignored)
 plans/                        # Specifications and implementation plans
 ```
@@ -26,26 +27,23 @@ When assigned an implementation issue, follow these steps in order:
 
 1. **Read the specification and plan.** The issue body links to a spec issue and a plan file in `plans/`. Read both fully before writing any code.
 2. **Create focused commits.** Each commit should address one logical change. Use conventional commit messages referencing the issue: `feat(#42): add input validation`.
-3. **Write production code** in the appropriate directories. Frontend code goes in `src/`, backend code in `backend/PriorityHub.Api/`.
+3. **Write production code** in the appropriate directories. Shared backend services go in `backend/PriorityHub.Api/`, Blazor UI code in `backend/PriorityHub.Ui/`.
 4. **Write or update tests** for every behavior change:
-   - Frontend: Vitest + React Testing Library in `src/**/*.test.js`
-   - Backend: xUnit in `backend/PriorityHub.Api.Tests/`
+   - UI components: bUnit in `backend/PriorityHub.Ui.Tests/`
+   - Backend services: xUnit in `backend/PriorityHub.Api.Tests/`
 5. **Update documentation:** Update `README.md` if setup or usage changes. Update the plan file to mark completed steps.
 6. **Run verification commands** before marking work complete:
-   - `npm run lint` — frontend linting
-   - `npm run test` — frontend tests
-   - `npm run test:coverage` — coverage must stay above 60%
-   - `dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj` — backend compilation
-   - `dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj` — backend tests
+   - `dotnet build PriorityHub.sln` — full solution compilation
+   - `dotnet test PriorityHub.sln` — all tests (API + UI)
 
 ## Code Conventions
 
-### Frontend (JavaScript/React)
-- 2-space indentation, single quotes, semicolons required
-- Strict equality (`===`) only
-- No `console.log()` — use `console.error()` or `console.warn()` only
-- Components in `src/components/`, pages in `src/pages/`, utilities in `src/lib/`
-- No direct API calls in components — use `src/lib/api.js`
+### Frontend (Blazor/Razor)
+- 4-space indentation, PascalCase for component parameters and public members
+- Components in `backend/PriorityHub.Ui/Components/`, pages in `Components/Pages/`
+- UI-specific services in `backend/PriorityHub.Ui/Services/`
+- Use dependency injection for all service access — no direct HTTP calls from components
+- JS interop only when Blazor has no native equivalent (e.g., localStorage, outside-click detection)
 
 ### Backend (C#/.NET)
 - 4-space indentation, PascalCase public members, `_camelCase` private fields
