@@ -83,7 +83,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
         {
             if (string.IsNullOrWhiteSpace(connection.PersonalAccessToken) && string.IsNullOrWhiteSpace(bearerToken))
             {
-                throw new InvalidOperationException("Missing Azure DevOps personal access token or Microsoft sign-in token.");
+                throw new InvalidOperationException("Azure DevOps authentication required. Sign in with Microsoft to grant access, or add a Personal Access Token for this connection.");
             }
 
             var authHeader = BuildAuthorizationHeader(connection, bearerToken);
@@ -295,7 +295,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
         var trimmed = (body ?? string.Empty).TrimStart();
         if (trimmed.StartsWith("<", StringComparison.Ordinal))
         {
-            return $"{prefix}: Azure DevOps returned HTML instead of JSON. The current token is not valid for Azure DevOps. Reconnect or use a PAT for this connection.";
+            return $"{prefix}: Azure DevOps returned HTML instead of JSON. The sign-in token is not valid for Azure DevOps. Re-sign in with Microsoft to refresh access, or add a Personal Access Token for this connection.";
         }
 
         var snippet = string.IsNullOrWhiteSpace(body)
