@@ -14,7 +14,9 @@
       ]
     },
     "github": {
-      "type": "github",
+      "type": "builtin",
+      "scope": "repository",
+      "authentication": "REMOVED_TOKEN",
       "tools": [
         "create-issue",
         "create-pull-request",
