@@ -39,6 +39,7 @@ builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
 ]));
 builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
+builder.Services.AddScoped<OauthTokenService>();
 
 // ── Authentication ──
 builder.Services
@@ -343,85 +344,8 @@ static string GetUserIdentityKey(ClaimsPrincipal user)
 
 static async Task<Dictionary<string, string>> GetOauthTokensByProviderAsync(ClaimsPrincipal user, HttpContext httpContext, IConfiguration configuration, CancellationToken cancellationToken)
 {
-    var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    var provider = user.FindFirstValue("provider");
-    var accessToken = await httpContext.GetTokenAsync("access_token");
-    if (string.IsNullOrWhiteSpace(accessToken))
-    {
-        return tokens;
-    }
-
-    if (string.Equals(provider, "microsoft", StringComparison.OrdinalIgnoreCase))
-    {
-        tokens["microsoft-tasks"] = accessToken;
-        tokens["outlook-flagged-mail"] = accessToken;
-
-        var refreshToken = await httpContext.GetTokenAsync("refresh_token");
-        var microsoftSection = configuration.GetSection("Authentication:Microsoft");
-        var azureDevOpsAccessToken = await RequestAccessTokenFromRefreshTokenAsync(
-            microsoftSection,
-            refreshToken,
-            "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation",
-            cancellationToken);
-
-        tokens["azure-devops"] = string.IsNullOrWhiteSpace(azureDevOpsAccessToken)
-            ? accessToken
-            : azureDevOpsAccessToken;
-    }
-
-    if (string.Equals(provider, "github", StringComparison.OrdinalIgnoreCase))
-    {
-        tokens["github"] = accessToken;
-    }
-
-    return tokens;
-}
-
-static async Task<string?> RequestAccessTokenFromRefreshTokenAsync(
-    IConfigurationSection microsoftSection,
-    string? refreshToken,
-    string scope,
-    CancellationToken cancellationToken)
-{
-    if (string.IsNullOrWhiteSpace(refreshToken))
-    {
-        return null;
-    }
-
-    var clientId = microsoftSection["ClientId"];
-    var clientSecret = microsoftSection["ClientSecret"];
-    if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
-    {
-        return null;
-    }
-
-    var tenantId = microsoftSection["TenantId"] ?? "common";
-    var tokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
-
-    using var httpClient = new HttpClient();
-    using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
-    {
-        Content = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["client_id"] = clientId,
-            ["client_secret"] = clientSecret,
-            ["grant_type"] = "refresh_token",
-            ["refresh_token"] = refreshToken,
-            ["scope"] = scope
-        })
-    };
-
-    using var response = await httpClient.SendAsync(request, cancellationToken);
-    if (!response.IsSuccessStatusCode)
-    {
-        return null;
-    }
-
-    var body = await response.Content.ReadAsStringAsync(cancellationToken);
-    using var document = JsonDocument.Parse(body);
-    return document.RootElement.TryGetProperty("access_token", out var tokenElement)
-        ? tokenElement.GetString()
-        : null;
+    var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
+    return await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
 }
 
 static async Task<string?> FetchGitHubEmailAsync(OAuthCreatingTicketContext context)

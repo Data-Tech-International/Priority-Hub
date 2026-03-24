@@ -5,6 +5,7 @@
 @inject WorkItemRanker Ranker
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
+@inject OauthTokenService TokenService
 @implements IDisposable
 
 <div class="app-shell">
@@ -489,26 +490,9 @@
         return $"{sub}_{provider}";
     }
 
-    private static async Task<Dictionary<string, string>> GetOauthTokensAsync(HttpContext httpContext, CancellationToken ct)
+    private async Task<Dictionary<string, string>> GetOauthTokensAsync(HttpContext httpContext, CancellationToken ct)
     {
-        var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var provider = httpContext.User.FindFirst("provider")?.Value;
-        var accessToken = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.GetTokenAsync(httpContext, "access_token");
-        if (string.IsNullOrWhiteSpace(accessToken)) return tokens;
-
-        if (string.Equals(provider, "microsoft", StringComparison.OrdinalIgnoreCase))
-        {
-            tokens["microsoft-tasks"] = accessToken;
-            tokens["outlook-flagged-mail"] = accessToken;
-            tokens["azure-devops"] = accessToken;
-        }
-
-        if (string.Equals(provider, "github", StringComparison.OrdinalIgnoreCase))
-        {
-            tokens["github"] = accessToken;
-        }
-
-        return tokens;
+        return await TokenService.GetTokensByProviderAsync(httpContext, ct);
     }
 
     public void Dispose()
