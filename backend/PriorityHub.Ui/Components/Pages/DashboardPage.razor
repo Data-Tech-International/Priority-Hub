@@ -247,12 +247,17 @@
 
                     @foreach (var item in FilteredItems)
                     {
-                        var cardClass = "work-item-card" + (item.Item.IsNew ? " is-new-item" : "") + (_draggedItemId == item.Item.Id ? " is-dragging" : "");
+                        var cardClass = "work-item-card"
+                            + (item.Item.IsNew ? " is-new-item" : "")
+                            + (_draggedItemId == item.Item.Id ? " is-dragging" : "")
+                            + (_dragOverItemId == item.Item.Id && _draggedItemId != item.Item.Id ? " drag-over" : "");
                         <article class="@cardClass"
                                  draggable="true"
                                  @ondragstart="() => _draggedItemId = item.Item.Id"
-                                 @ondragend="() => _draggedItemId = null"
+                                 @ondragend="OnDragEnd"
+                                 @ondragenter="() => _dragOverItemId = item.Item.Id"
                                  @ondragover:preventDefault
+                                 @ondragleave="() => { if (_dragOverItemId == item.Item.Id) _dragOverItemId = null; }"
                                  @ondrop="() => HandleDropItem(item.Item.Id)">
                             <div class="work-item-heading">
                                 <div class="work-item-title">
@@ -262,15 +267,25 @@
                                         <span class="new-pill">New item</span>
                                     }
                                 </div>
-                                @if (!string.IsNullOrWhiteSpace(item.Item.SourceUrl))
-                                {
-                                    <a href="@item.Item.SourceUrl"
-                                       target="_blank"
-                                       rel="noopener noreferrer"
-                                       class="item-source-link">
-                                        Open in source
-                                    </a>
-                                }
+                                <div class="item-actions">
+                                    <button type="button"
+                                            class="item-action-button"
+                                            title="Move to top"
+                                            @onclick="() => MoveToTop(item.Item.Id)"
+                                            @onclick:stopPropagation>
+                                        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/><line x1="5" y1="3" x2="19" y2="3"/></svg>
+                                    </button>
+                                    @if (!string.IsNullOrWhiteSpace(item.Item.SourceUrl))
+                                    {
+                                        <a href="@item.Item.SourceUrl"
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           class="item-action-button"
+                                           title="Open in source">
+                                            <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                        </a>
+                                    }
+                                </div>
                             </div>
 
                             <div class="tag-row">
@@ -317,6 +332,7 @@
     private List<string> _selectedTags = [];
     private string _search = "";
     private string? _draggedItemId;
+    private string? _dragOverItemId;
     private bool _savingOrder;
     private bool _showConnectors;
     private CancellationTokenSource? _cts;
@@ -408,16 +424,44 @@
         if (_draggedItemId is null || _draggedItemId == targetId)
         {
             _draggedItemId = null;
+            _dragOverItemId = null;
             return;
         }
 
         var currentVisibleIds = _rankedItems.Select(i => i.Item.Id).ToList();
         var nextOrderedIds = ReorderVisibleItems(currentVisibleIds, _orderedItemIds, _draggedItemId, targetId);
+        _draggedItemId = null;
+        _dragOverItemId = null;
         _orderedItemIds = nextOrderedIds;
         _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+        StateHasChanged();
+
+        await SaveOrderAsync(nextOrderedIds);
+    }
+
+    private async Task MoveToTop(string itemId)
+    {
+        var nextOrderedIds = new List<string>(_orderedItemIds);
+        nextOrderedIds.Remove(itemId);
+        nextOrderedIds.Insert(0, itemId);
+
+        _orderedItemIds = nextOrderedIds;
+        _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+        StateHasChanged();
+
+        await SaveOrderAsync(nextOrderedIds);
+    }
+
+    private void OnDragEnd()
+    {
+        _draggedItemId = null;
+        _dragOverItemId = null;
+    }
+
+    private async Task SaveOrderAsync(List<string> newOrder)
+    {
         _savingOrder = true;
         _statusMessage = null;
-        _draggedItemId = null;
         StateHasChanged();
 
         try
@@ -429,7 +473,7 @@
             var config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
             config.Preferences = new UserPreferences
             {
-                OrderedItemIds = nextOrderedIds
+                OrderedItemIds = newOrder
                     .Where(id => !string.IsNullOrWhiteSpace(id))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList()

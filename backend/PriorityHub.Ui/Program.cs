@@ -246,7 +246,7 @@ app.MapGet("/api/auth/login/github", (IConfiguration configuration) =>
 app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
 {
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Ok(new { ok = true });
+    return Results.Redirect("/login");
 }).RequireAuthorization();
 
 app.MapGet("/api/config", async (HttpContext httpContext, LocalConfigStore configStore, CancellationToken cancellationToken) =>

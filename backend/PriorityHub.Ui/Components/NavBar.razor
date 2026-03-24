@@ -20,6 +20,12 @@
                         var provider = context.User.FindFirst("provider")?.Value ?? "";
                         var displayName = name ?? email ?? "Signed in";
                         var displayEmail = email ?? $"{WorkItemRanker.FormatProviderName(provider)} account";
+
+                        if (string.IsNullOrWhiteSpace(picture) && !string.IsNullOrWhiteSpace(email))
+                        {
+                            var hash = GravatarHash(email);
+                            picture = $"https://www.gravatar.com/avatar/{hash}?s=68&d=mp";
+                        }
                     }
                     @if (!string.IsNullOrWhiteSpace(picture))
                     {
@@ -37,8 +43,8 @@
                     </div>
                     <form method="post" action="/api/auth/logout">
                         <AntiforgeryToken />
-                        <button class="signout-button" type="submit">
-                            Sign out
+                        <button class="signout-button" type="submit" title="Sign out">
+                            <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                         </button>
                     </form>
                 </div>
@@ -48,4 +54,10 @@
 </header>
 
 @code {
+    private static string GravatarHash(string email)
+    {
+        var trimmed = email.Trim().ToLowerInvariant();
+        var bytes = System.Security.Cryptography.MD5.HashData(System.Text.Encoding.ASCII.GetBytes(trimmed));
+        return Convert.ToHexStringLower(bytes);
+    }
 }
