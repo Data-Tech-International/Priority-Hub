@@ -3,6 +3,7 @@ dist/
 dist-server/
 coverage/
 .env
+.env.local
 config/providers.local.json
 config/users/
 backend/PriorityHub.Api/appsettings.Development.json
