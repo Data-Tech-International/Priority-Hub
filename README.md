@@ -177,3 +177,9 @@ This process ensures traceability from specification to plan to implementation a
 ## Current behavior without configuration
 
 If `config/providers.local.json` is missing or empty, the backend still returns a valid dashboard payload with no connections or work items. This lets the UI load cleanly while you configure live provider access from the dashboard itself.
+
+## Future roadmap
+
+- **[Blazor migration](Plans/blazor-migration.md)** — Migrate the Vite + React frontend to Blazor Server, co-located in the ASP.NET Core solution and sharing services directly without an HTTP API boundary.
+
+To start work on a planned change, follow the specification-first workflow described in the **Code Quality & Testing** section above.
