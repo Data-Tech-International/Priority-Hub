@@ -1,0 +1,30 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error — Priority Hub</PageTitle>
+
+<div class="app-shell">
+    <main class="login-page">
+        <section class="login-card">
+            <p class="eyebrow">Priority Hub</p>
+            <h1>Something went wrong.</h1>
+            <p class="login-copy">An error occurred while processing your request.</p>
+
+            @if (ShowRequestId)
+            {
+                <p><strong>Request ID:</strong> <code>@RequestId</code></p>
+            }
+        </section>
+    </main>
+</div>
+
+@code{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

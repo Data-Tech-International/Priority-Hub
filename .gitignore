@@ -6,6 +6,7 @@ coverage/
 config/providers.local.json
 config/users/
 backend/PriorityHub.Api/appsettings.Development.json
+backend/PriorityHub.Ui/appsettings.Development.json
 
 # .NET build outputs
 **/bin/

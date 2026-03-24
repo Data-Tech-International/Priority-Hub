@@ -1,0 +1,53 @@
+@inject IJSRuntime JS
+
+<div class="help-panel">
+    <button type="button" class="help-toggle" @onclick="Toggle" aria-expanded="@_open">
+        <span class="help-icon">?</span>
+        @Title
+        <span class="help-chevron">@(_open ? "▲" : "▼")</span>
+    </button>
+    @if (_open)
+    {
+        <div class="help-content">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ContextKey { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _open;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var stored = await JS.InvokeAsync<string?>("localStorage.getItem", $"phub:help:{ContextKey}");
+                _open = stored == "open";
+                StateHasChanged();
+            }
+            catch
+            {
+                // localStorage may not be available during prerendering
+            }
+        }
+    }
+
+    private async Task Toggle()
+    {
+        _open = !_open;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", $"phub:help:{ContextKey}", _open ? "open" : "closed");
+        }
+        catch
+        {
+            // ignore storage errors
+        }
+    }
+}
