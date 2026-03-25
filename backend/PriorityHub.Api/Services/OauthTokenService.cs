@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace PriorityHub.Api.Services;
 
@@ -10,9 +11,10 @@ namespace PriorityHub.Api.Services;
 /// exchanging the Microsoft refresh token for provider-specific access tokens
 /// when needed (e.g. Azure DevOps requires its own audience).
 /// </summary>
-public sealed class OauthTokenService(IConfiguration configuration, ILogger<OauthTokenService> logger)
+public sealed class OauthTokenService(IConfiguration configuration, ILogger<OauthTokenService> logger, IHttpClientFactory httpClientFactory)
 {
     private const string AzureDevOpsScope = "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation";
+    private const string MicrosoftGraphScope = "User.Read Tasks.Read Mail.Read offline_access";
 
     /// <summary>
     /// Builds a dictionary mapping provider keys to their OAuth access tokens.
@@ -29,20 +31,43 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
 
         if (string.Equals(provider, "microsoft", StringComparison.OrdinalIgnoreCase))
         {
-            tokens["microsoft-tasks"] = accessToken;
-            tokens["outlook-flagged-mail"] = accessToken;
-
             var refreshToken = await httpContext.GetTokenAsync("refresh_token");
             var microsoftSection = configuration.GetSection("Authentication:Microsoft");
-            var azureDevOpsAccessToken = await RequestAccessTokenFromRefreshTokenAsync(
+
+            var refreshedMicrosoftToken = await RequestAccessTokenFromRefreshTokenAsync(
                 microsoftSection,
                 refreshToken,
+                MicrosoftGraphScope,
+                cancellationToken);
+
+            var effectiveMicrosoftAccessToken = accessToken;
+            var effectiveRefreshToken = refreshToken;
+            if (!string.IsNullOrWhiteSpace(refreshedMicrosoftToken?.AccessToken))
+            {
+                effectiveMicrosoftAccessToken = refreshedMicrosoftToken.AccessToken;
+                effectiveRefreshToken = string.IsNullOrWhiteSpace(refreshedMicrosoftToken.RefreshToken)
+                    ? refreshToken
+                    : refreshedMicrosoftToken.RefreshToken;
+
+                await PersistRefreshedTokensAsync(
+                    httpContext,
+                    effectiveMicrosoftAccessToken,
+                    effectiveRefreshToken,
+                    refreshedMicrosoftToken.ExpiresAt);
+            }
+
+            tokens["microsoft-tasks"] = effectiveMicrosoftAccessToken;
+            tokens["outlook-flagged-mail"] = effectiveMicrosoftAccessToken;
+
+            var azureDevOpsAccessToken = await RequestAccessTokenFromRefreshTokenAsync(
+                microsoftSection,
+                effectiveRefreshToken,
                 AzureDevOpsScope,
                 cancellationToken);
 
-            if (!string.IsNullOrWhiteSpace(azureDevOpsAccessToken))
+            if (!string.IsNullOrWhiteSpace(azureDevOpsAccessToken?.AccessToken))
             {
-                tokens["azure-devops"] = azureDevOpsAccessToken;
+                tokens["azure-devops"] = azureDevOpsAccessToken.AccessToken;
             }
             else
             {
@@ -58,7 +83,67 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         return tokens;
     }
 
-    private async Task<string?> RequestAccessTokenFromRefreshTokenAsync(
+    private async Task PersistRefreshedTokensAsync(
+        HttpContext httpContext,
+        string accessToken,
+        string? refreshToken,
+        string? expiresAt)
+    {
+        if (httpContext.Response.HasStarted)
+        {
+            logger.LogDebug("Skipping OAuth token persistence because the HTTP response has already started.");
+            return;
+        }
+
+        var authResult = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!authResult.Succeeded || authResult.Principal is null || authResult.Properties is null)
+        {
+            return;
+        }
+
+        SetOrAddTokenValue(authResult.Properties, "access_token", accessToken);
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            SetOrAddTokenValue(authResult.Properties, "refresh_token", refreshToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(expiresAt))
+        {
+            SetOrAddTokenValue(authResult.Properties, "expires_at", expiresAt);
+        }
+
+        try
+        {
+            await httpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                authResult.Principal,
+                authResult.Properties);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Skipping OAuth token persistence because response headers are not writable.");
+        }
+    }
+
+    private static void SetOrAddTokenValue(AuthenticationProperties properties, string tokenName, string tokenValue)
+    {
+        var existingTokens = properties.GetTokens().ToList();
+        var existingToken = existingTokens.FirstOrDefault(token =>
+            string.Equals(token.Name, tokenName, StringComparison.Ordinal));
+
+        if (existingToken is null)
+        {
+            existingTokens.Add(new AuthenticationToken { Name = tokenName, Value = tokenValue });
+        }
+        else
+        {
+            existingToken.Value = tokenValue;
+        }
+
+        properties.StoreTokens(existingTokens);
+    }
+
+    private async Task<TokenExchangeResult?> RequestAccessTokenFromRefreshTokenAsync(
         IConfigurationSection microsoftSection,
         string? refreshToken,
         string scope,
@@ -66,7 +151,7 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
-            logger.LogWarning("No refresh token available for Azure DevOps token exchange.");
+            logger.LogWarning("No refresh token available for OAuth token exchange (scope: {Scope}).", scope);
             return null;
         }
 
@@ -80,7 +165,7 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         var tenantId = microsoftSection["TenantId"] ?? "common";
         var tokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
 
-        using var httpClient = new HttpClient();
+        var httpClient = httpClientFactory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -97,14 +182,33 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            logger.LogWarning("Azure DevOps token exchange failed with status {StatusCode}: {Body}", response.StatusCode, errorBody);
+            logger.LogWarning("OAuth token exchange failed for scope {Scope} with status {StatusCode}: {Body}", scope, response.StatusCode, errorBody);
             return null;
         }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         using var document = JsonDocument.Parse(body);
-        return document.RootElement.TryGetProperty("access_token", out var tokenElement)
-            ? tokenElement.GetString()
+
+        if (!document.RootElement.TryGetProperty("access_token", out var accessTokenElement)
+            || string.IsNullOrWhiteSpace(accessTokenElement.GetString()))
+        {
+            return null;
+        }
+
+        var accessToken = accessTokenElement.GetString()!;
+        var refreshedToken = document.RootElement.TryGetProperty("refresh_token", out var refreshTokenElement)
+            ? refreshTokenElement.GetString()
             : null;
+
+        string? expiresAt = null;
+        if (document.RootElement.TryGetProperty("expires_in", out var expiresInElement)
+            && expiresInElement.TryGetInt32(out var expiresInSeconds))
+        {
+            expiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds).ToString("o");
+        }
+
+        return new TokenExchangeResult(accessToken, refreshedToken, expiresAt);
     }
+
+    private sealed record TokenExchangeResult(string AccessToken, string? RefreshToken, string? ExpiresAt);
 }
