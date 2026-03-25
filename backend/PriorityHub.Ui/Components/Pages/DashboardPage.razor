@@ -19,7 +19,7 @@
                     own persistent cross-source order.
                 </p>
                 <div class="hero-actions">
-                    <button class="refresh-button" @onclick="RefreshDashboard" type="button">
+                    <button class="refresh-button" @onclick="RefreshDashboard" type="button" aria-label="Refresh live data">
                         @(_loading ? "Refreshing…" : "Refresh live data")
                     </button>
                     <span class="generated-at">
@@ -271,9 +271,26 @@
                                     <button type="button"
                                             class="item-action-button"
                                             title="Move to top"
+                                            aria-label="Move to top"
                                             @onclick="() => MoveToTop(item.Item.Id)"
                                             @onclick:stopPropagation>
                                         <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/><line x1="5" y1="3" x2="19" y2="3"/></svg>
+                                    </button>
+                                    <button type="button"
+                                            class="item-action-button mobile-reorder-btn"
+                                            title="Move up"
+                                            aria-label="Move up"
+                                            @onclick="() => MoveItemUp(item.Item.Id)"
+                                            @onclick:stopPropagation>
+                                        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                                    </button>
+                                    <button type="button"
+                                            class="item-action-button mobile-reorder-btn"
+                                            title="Move down"
+                                            aria-label="Move down"
+                                            @onclick="() => MoveItemDown(item.Item.Id)"
+                                            @onclick:stopPropagation>
+                                        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                                     </button>
                                     @if (!string.IsNullOrWhiteSpace(item.Item.SourceUrl))
                                     {
@@ -281,7 +298,8 @@
                                            target="_blank"
                                            rel="noopener noreferrer"
                                            class="item-action-button"
-                                           title="Open in source">
+                                           title="Open in source"
+                                           aria-label="Open in source">
                                             <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                         </a>
                                     }
@@ -311,6 +329,7 @@
                 </div>
             </section>
         </section>
+        <div class="sr-only" aria-live="assertive" aria-atomic="true">@_dragAnnouncement</div>
     </main>
 </div>
 
@@ -336,6 +355,7 @@
     private bool _savingOrder;
     private bool _showConnectors;
     private CancellationTokenSource? _cts;
+    private string? _dragAnnouncement;
 
     private IReadOnlyList<string> AvailableTags =>
         _dashboard.WorkItems
@@ -434,6 +454,7 @@
         _dragOverItemId = null;
         _orderedItemIds = nextOrderedIds;
         _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+        _dragAnnouncement = "Item moved.";
         StateHasChanged();
 
         await SaveOrderAsync(nextOrderedIds);
@@ -537,6 +558,24 @@
     private async Task<Dictionary<string, string>> GetOauthTokensAsync(HttpContext httpContext, CancellationToken ct)
     {
         return await TokenService.GetTokensByProviderAsync(httpContext, ct);
+    }
+
+    private Task MoveItemUp(string itemId) => MoveItem(itemId, direction: -1);
+
+    private Task MoveItemDown(string itemId) => MoveItem(itemId, direction: 1);
+
+    private async Task MoveItem(string itemId, int direction)
+    {
+        var currentVisibleIds = FilteredItems.Select(i => i.Item.Id).ToList();
+        var idx = currentVisibleIds.IndexOf(itemId);
+        var targetIdx = idx + direction;
+        if (idx < 0 || targetIdx < 0 || targetIdx >= currentVisibleIds.Count) return;
+        var nextOrderedIds = ReorderVisibleItems(currentVisibleIds, _orderedItemIds, itemId, currentVisibleIds[targetIdx]);
+        _orderedItemIds = nextOrderedIds;
+        _rankedItems = Ranker.Rank(_dashboard.WorkItems, _dashboard.BoardConnections, _orderedItemIds);
+        _dragAnnouncement = direction < 0 ? "Item moved up." : "Item moved down.";
+        StateHasChanged();
+        await SaveOrderAsync(nextOrderedIds);
     }
 
     public void Dispose()

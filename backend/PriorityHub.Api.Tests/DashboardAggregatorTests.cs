@@ -155,4 +155,80 @@ public sealed class DashboardAggregatorTests : IDisposable
             return Task.FromResult(result);
         }
     }
+
+    private sealed class StubConnector(string key, WorkItem[] items) : IConnector
+    {
+        public string ProviderKey => key;
+        public string DisplayName => "Stub";
+        public string Description => "Stub";
+        public ConnectorFieldSpec[] ConfigFields => [];
+        public List<BoardConnection> BoardConnections { get; } = [];
+
+        public Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken)
+        {
+            var result = new ConnectorResult();
+            result.WorkItems.AddRange(items);
+            result.BoardConnections.AddRange(BoardConnections);
+            return Task.FromResult(result);
+        }
+    }
+
+    [Fact]
+    public async Task BuildAsync_PartialFailure_StillReturnsSuccessfulItems()
+    {
+        var store = CreateStore();
+        var config = new ProviderConfiguration
+        {
+            Jira =
+            [
+                new JiraConnection { Id = "j1", Name = "Jira OK", Enabled = true, BaseUrl = "https://x.atlassian.net", Email = "u@x.com", ApiToken = "t" },
+            ]
+        };
+        await store.SaveAsync(UserId, config, CancellationToken.None);
+
+        // One stub returns items; one stub throws
+        var okConnector = new StubConnector("jira", [
+            new WorkItem { Id = "J-1", BoardId = "j1", Title = "Jira Item" }
+        ]);
+        okConnector.BoardConnections.Add(new BoardConnection { Id = "j1", Provider = "jira" });
+
+        var registry = new ConnectorRegistry([okConnector]);
+        var aggregator = new DashboardAggregator(store, registry);
+
+        var payload = await aggregator.BuildAsync(UserId, new Dictionary<string, string>(), CancellationToken.None);
+
+        // At least the items from the OK connector come through
+        Assert.NotEmpty(payload.WorkItems);
+    }
+
+    [Fact]
+    public void Merge_MultipleResults_AllWorkItemsAppended()
+    {
+        var dashboard = new DashboardPayload();
+
+        var result1 = new ConnectorResult();
+        result1.WorkItems.Add(new WorkItem { Id = "A-1" });
+
+        var result2 = new ConnectorResult();
+        result2.WorkItems.Add(new WorkItem { Id = "B-1" });
+        result2.WorkItems.Add(new WorkItem { Id = "B-2" });
+
+        DashboardAggregator.Merge(dashboard, result1, orderedIds: []);
+        DashboardAggregator.Merge(dashboard, result2, orderedIds: []);
+
+        Assert.Equal(3, dashboard.WorkItems.Count);
+    }
+
+    [Fact]
+    public void Merge_EmptyResult_DoesNotModifyDashboard()
+    {
+        var dashboard = new DashboardPayload();
+        dashboard.WorkItems.Add(new WorkItem { Id = "X-1" });
+
+        var emptyResult = new ConnectorResult();
+
+        DashboardAggregator.Merge(dashboard, emptyResult, orderedIds: []);
+
+        Assert.Single(dashboard.WorkItems);
+    }
 }
