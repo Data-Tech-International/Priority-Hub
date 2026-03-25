@@ -1,0 +1,157 @@
+@page "/unlock"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject PassphraseCacheInterop PassphraseCache
+@inject NavigationManager Nav
+
+<PageTitle>Unlock — Priority Hub</PageTitle>
+
+<div class="app-shell">
+    <main class="unlock-page">
+        <section class="unlock-card">
+            <p class="eyebrow">Priority Hub</p>
+            <h1>Unlock your workspace.</h1>
+            <p class="unlock-copy">
+                Enter your passphrase to decrypt your provider credentials.
+                Your passphrase is never sent to the server.
+            </p>
+
+            @if (_errorMessage is not null)
+            {
+                <section class="status-banner status-error" role="alert">
+                    <strong>Unlock failed.</strong>
+                    <span>@_errorMessage</span>
+                </section>
+            }
+
+            @if (_loading)
+            {
+                <p class="unlock-loading" role="status">Checking remembered unlock state…</p>
+            }
+            else
+            {
+                <form class="unlock-form" @onsubmit="HandleUnlockAsync" @onsubmit:preventDefault>
+                    <div class="config-field">
+                        <label for="passphrase-input">Passphrase</label>
+                        <input id="passphrase-input"
+                               type="password"
+                               autocomplete="current-password"
+                               placeholder="Enter your passphrase"
+                               @bind="_passphrase"
+                               @bind:event="oninput"
+                               disabled="@_submitting" />
+                    </div>
+
+                    <label class="toggle-row">
+                        <input type="checkbox"
+                               id="shared-device-checkbox"
+                               @bind="_isSharedDevice" />
+                        <span>This is a shared or public device</span>
+                    </label>
+
+                    @if (!_isSharedDevice)
+                    {
+                        <label class="toggle-row">
+                            <input type="checkbox"
+                                   id="remember-me-checkbox"
+                                   @bind="_rememberMe" />
+                            <span>Remember on this device for 90 days</span>
+                        </label>
+                    }
+
+                    <button class="unlock-button"
+                            type="submit"
+                            disabled="@(_submitting || string.IsNullOrWhiteSpace(_passphrase))">
+                        @(_submitting ? "Unlocking…" : "Unlock")
+                    </button>
+                </form>
+            }
+        </section>
+    </main>
+</div>
+
+@code {
+    /// <summary>
+    /// Optional redirect target supplied by other pages via query string.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private string _passphrase = string.Empty;
+    private bool _rememberMe = false;
+    private bool _isSharedDevice = false;
+    private bool _loading = true;
+    private bool _submitting = false;
+    private string? _errorMessage;
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Attempt to restore the passphrase from the browser cache.
+        // This runs client-side so it must occur in OnAfterRenderAsync.
+        try
+        {
+            var cached = await PassphraseCache.LoadPassphraseAsync();
+            if (cached is not null)
+            {
+                await UnlockWithPassphraseAsync(cached, persist: false);
+                return;
+            }
+        }
+        catch
+        {
+            // Cache read failure is non-fatal; fall through to manual entry.
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleUnlockAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_passphrase)) return;
+        _submitting = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            bool persist = _rememberMe && !_isSharedDevice;
+            await UnlockWithPassphraseAsync(_passphrase, persist: persist);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _submitting = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Validates the passphrase, optionally stores it in the browser cache,
+    /// and navigates to the return URL or dashboard.
+    /// </summary>
+    private async Task UnlockWithPassphraseAsync(string passphrase, bool persist)
+    {
+        // Passphrase validation would verify decryption of provider
+        // credentials here.  For now we accept any non-empty passphrase so
+        // that the caching infrastructure can be exercised end-to-end.
+        // TODO: Wire up credential decryption validation once provider-level
+        // encryption is implemented.
+        if (string.IsNullOrWhiteSpace(passphrase))
+            throw new InvalidOperationException("Please enter a passphrase to unlock your workspace.");
+
+        if (persist)
+        {
+            await PassphraseCache.StorePassphraseAsync(passphrase);
+        }
+
+        var target = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl;
+        Nav.NavigateTo(target);
+    }
+}

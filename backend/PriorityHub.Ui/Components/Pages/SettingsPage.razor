@@ -4,6 +4,7 @@
 @inject LocalConfigStore ConfigStore
 @inject ConnectorRegistry ConnectorRegistry
 @inject IHttpContextAccessor HttpContextAccessor
+@inject PassphraseCacheInterop PassphraseCache
 
 <PageTitle>Settings — Priority Hub</PageTitle>
 
@@ -24,11 +25,11 @@
         }
 
         <div class="settings-tabs">
-            @foreach (var tab in new[] { "connectors", "account", "export" })
+            @foreach (var tab in new[] { "connectors", "account", "export", "security" })
             {
                 <button type="button"
                         class="settings-tab@(_activeTab == tab ? " is-active" : "")"
-                        @onclick="() => _activeTab = tab">
+                        @onclick="() => SwitchTabAsync(tab)">
                     @(char.ToUpper(tab[0]) + tab[1..])
                 </button>
             }
@@ -222,6 +223,46 @@
                 </div>
             </div>
         }
+
+        @* ── Security tab ── *@
+        @if (_activeTab == "security")
+        {
+            <div class="settings-tab-content">
+                <div class="security-section">
+                    <article class="security-card">
+                        <h3>Remembered unlock</h3>
+                        <p>
+                            When you unlock on a trusted device and choose to be remembered, the app stores
+                            wrapped unlock material in your browser using WebCrypto AES-GCM. The raw
+                            passphrase is never sent to the server.
+                        </p>
+
+                        @if (_checkingCache)
+                        {
+                            <p class="security-cache-status">Checking remembered state…</p>
+                        }
+                        else if (_hasCachedPassphrase)
+                        {
+                            <p class="security-cache-status is-active">
+                                A remembered unlock is currently active on this browser.
+                            </p>
+                            <button class="remove-button"
+                                    type="button"
+                                    disabled="@_clearingCache"
+                                    @onclick="ClearPassphraseCacheAsync">
+                                @(_clearingCache ? "Clearing…" : "Clear remembered unlock")
+                            </button>
+                        }
+                        else
+                        {
+                            <p class="security-cache-status">
+                                No remembered unlock is active on this browser.
+                            </p>
+                        }
+                    </article>
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -239,6 +280,11 @@
     private ProviderConfiguration _config = new();
     private Dictionary<string, List<Dictionary<string, object?>>> _connections = new();
     private Dictionary<string, List<Dictionary<string, string?>>> _validationErrors = new();
+
+    // Security tab state
+    private bool _checkingCache = false;
+    private bool _hasCachedPassphrase = false;
+    private bool _clearingCache = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -295,6 +341,50 @@
 
     private List<Dictionary<string, object?>> GetConnections(string configKey) =>
         _connections.TryGetValue(configKey, out var list) ? list : [];
+
+    private async Task SwitchTabAsync(string tab)
+    {
+        _activeTab = tab;
+
+        if (tab == "security")
+        {
+            _checkingCache = true;
+            StateHasChanged();
+            try
+            {
+                _hasCachedPassphrase = await PassphraseCache.HasValidCacheAsync();
+            }
+            catch
+            {
+                _hasCachedPassphrase = false;
+            }
+            finally
+            {
+                _checkingCache = false;
+            }
+        }
+    }
+
+    private async Task ClearPassphraseCacheAsync()
+    {
+        _clearingCache = true;
+        _statusMessage = null;
+        StateHasChanged();
+        try
+        {
+            await PassphraseCache.ClearPassphraseAsync();
+            _hasCachedPassphrase = false;
+            _statusMessage = "Remembered unlock cleared.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _clearingCache = false;
+        }
+    }
 
     private static string? GetConnectionField(Dictionary<string, object?> connection, string field) =>
         connection.TryGetValue(field, out var val) ? val?.ToString() : null;

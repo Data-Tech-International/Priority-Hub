@@ -40,6 +40,7 @@ builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
 builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
 builder.Services.AddScoped<OauthTokenService>();
+builder.Services.AddScoped<PassphraseCacheInterop>();
 
 // ── Authentication ──
 builder.Services
