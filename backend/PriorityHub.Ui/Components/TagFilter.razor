@@ -5,12 +5,22 @@
     <span class="tag-filter-label">Tags</span>
     <button type="button"
             class="tag-filter-toggle@(_open ? " is-open" : "")"
-            @onclick="() => _open = !_open">
+            aria-haspopup="listbox"
+            aria-expanded="@(_open ? "true" : "false")"
+            id="tag-filter-btn"
+            @onclick="() => _open = !_open"
+            @onkeydown="HandleToggleKeyDown">
         @Label
     </button>
     @if (_open)
     {
-        <div class="tag-filter-dropdown">
+        <div class="tag-filter-dropdown"
+             role="listbox"
+             aria-multiselectable="true"
+             aria-labelledby="tag-filter-btn"
+             tabindex="-1"
+             @ref="_dropdownRef"
+             @onkeydown="HandleKeyDown">
             @if (SelectedTags.Count > 0)
             {
                 <button type="button" class="tag-filter-clear" @onclick="ClearSelection">
@@ -25,7 +35,11 @@
             {
                 @foreach (var tag in AvailableTags)
                 {
-                    <label class="tag-filter-option">
+                    <label class="tag-filter-option"
+                           role="option"
+                           aria-selected="@SelectedTags.Contains(tag)"
+                           tabindex="0"
+                           @onkeydown="e => HandleOptionKeyDown(e, tag)">
                         <input type="checkbox"
                                checked="@SelectedTags.Contains(tag)"
                                @onchange="() => ToggleTag(tag)" />
@@ -44,7 +58,10 @@
 
     private bool _open;
     private ElementReference _containerRef;
+    private ElementReference _dropdownRef;
     private DotNetObjectReference<TagFilter>? _dotNetRef;
+    private int _focusedIndex = -1;
+    private int? _pendingFocusIndex;
 
     private string Label => SelectedTags.Count == 0
         ? "All tags"
@@ -59,6 +76,15 @@
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("PriorityHub.registerOutsideClick", _containerRef, _dotNetRef);
         }
+
+        // Focus must be deferred until after Blazor renders the dropdown element into the DOM.
+        // _pendingFocusIndex is set in HandleToggleKeyDown when opening via keyboard.
+        if (_pendingFocusIndex.HasValue && _open)
+        {
+            var indexToFocus = _pendingFocusIndex.Value;
+            _pendingFocusIndex = null;
+            await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, indexToFocus);
+        }
     }
 
     [JSInvokable]
@@ -66,6 +92,64 @@
     {
         _open = false;
         StateHasChanged();
+    }
+
+    private void HandleToggleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+            case " ":
+            case "ArrowDown":
+                _open = true;
+                _focusedIndex = 0;
+                _pendingFocusIndex = 0;
+                StateHasChanged();
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _focusedIndex = AvailableTags.Count == 0
+                    ? -1
+                    : (_focusedIndex + 1) % AvailableTags.Count;
+                await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, _focusedIndex);
+                break;
+            case "ArrowUp":
+                _focusedIndex = AvailableTags.Count == 0
+                    ? -1
+                    : (_focusedIndex - 1 + AvailableTags.Count) % AvailableTags.Count;
+                await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, _focusedIndex);
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task HandleOptionKeyDown(KeyboardEventArgs e, string tag)
+    {
+        switch (e.Key)
+        {
+            // Enter explicitly activates the option via ToggleTag. Space is handled natively by
+            // the browser through the embedded checkbox to avoid double-toggling, so we don't handle it here.
+            case "Enter":
+                await ToggleTag(tag);
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
     }
 
     private async Task ToggleTag(string tag)

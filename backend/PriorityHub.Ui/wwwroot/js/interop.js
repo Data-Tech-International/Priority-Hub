@@ -16,3 +16,11 @@ window.PriorityHub.registerOutsideClick = function (element, dotNetRef) {
     });
     observer.observe(document.body, { childList: true, subtree: true });
 };
+
+window.PriorityHub.focusNthOption = function (container, index) {
+    if (!container) return;
+    var options = container.querySelectorAll('[role="option"]');
+    if (index >= 0 && index < options.length) {
+        options[index].focus();
+    }
+};
