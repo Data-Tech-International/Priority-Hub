@@ -38,9 +38,10 @@
 
 **Resolution:**
 
-1. Open **Settings** and verify that at least one connector is configured.
+1. Open **Settings** and verify that at least one connector is configured and enabled.
 2. Check that the provider credentials and query (WIQL / JQL / board ID) are valid.
-3. Confirm network connectivity to the provider APIs.
+3. Check the **connector health** status at the top of the dashboard for any error badges.
+4. Confirm network connectivity to the provider APIs from the server host.
 
 ## Missing Local Config
 
@@ -52,18 +53,152 @@
 - Add connectors via **Settings** to create the file.
 - Do not commit `config/providers.local.json` to version control.
 
+---
+
+## Connector-Specific Issues
+
+### Azure DevOps: "returned HTML instead of JSON"
+
+**Symptom:** Error message: _"Azure DevOps returned HTML instead of JSON. The sign-in token is not valid for Azure DevOps."_
+
+**Cause:** The Microsoft OAuth token is not authorized for Azure DevOps, or the PAT has expired.
+
+**Resolution:**
+
+1. Sign out and sign back in with Microsoft to refresh the OAuth token.
+2. If using a PAT, verify it has not expired and has **Work Items (Read)** scope:
+   - Go to `https://dev.azure.com/<your-org>/_usersSettings/tokens`.
+   - Regenerate or create a new PAT.
+   - Update the PAT field in **Settings**.
+3. See [Create a PAT](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate) for guidance.
+
+### Azure DevOps: "Azure DevOps authentication required"
+
+**Symptom:** Error message: _"Azure DevOps authentication required. Sign in with Microsoft to grant access, or add a Personal Access Token for this connection."_
+
+**Resolution:**
+
+- Either sign in with Microsoft, or open **Settings** and add a PAT to the connector.
+
+### Azure DevOps: "WIQL query returned no results"
+
+**Symptom:** Connector shows healthy but the dashboard is empty.
+
+**Resolution:**
+
+1. Run the same WIQL query in the [Azure DevOps query editor](https://learn.microsoft.com/en-us/azure/devops/boards/queries/using-queries) to verify it returns items.
+2. Check that `@project` resolves to the correct project.
+3. Check that work items are assigned to your account when using `@me`.
+
+---
+
+### Jira: 401 Unauthorized
+
+**Symptom:** Connector shows as unhealthy; error mentions authentication failure.
+
+**Resolution:**
+
+1. Verify the **Email** field matches your Atlassian account email exactly.
+2. Confirm the API token has not been revoked:
+   - Go to `https://id.atlassian.com/manage-profile/security/api-tokens`.
+   - Revoke the old token and generate a new one.
+   - Update the API token field in **Settings**.
+3. See [Manage API tokens](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) for guidance.
+
+### Jira: "Missing Jira base URL, email, or API token"
+
+**Symptom:** Connector fails immediately on save.
+
+**Resolution:**
+
+- Ensure all three required fields (Base URL, Email, API token) are filled in.
+- The Base URL must include the scheme, e.g., `https://yourorg.atlassian.net` (not just `yourorg.atlassian.net`).
+
+### Jira: JQL query returns no results
+
+**Symptom:** Connector shows healthy but the dashboard is empty.
+
+**Resolution:**
+
+1. Test the JQL query directly in your Jira instance (open any project → **Filters** → **Advanced issue search**).
+2. Confirm `currentUser()` resolves to your account.
+3. Try a simpler baseline query:
+   ```jql
+   assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
+   ```
+
+---
+
+### Trello: 401 Unauthorized / "invalid token"
+
+**Symptom:** Connector shows as unhealthy; error mentions invalid key or token.
+
+**Resolution:**
+
+1. Verify the **API key** and **Token** in **Settings** match the values at [https://trello.com/app-key](https://trello.com/app-key).
+2. Trello tokens can be revoked by visiting `https://trello.com/your-account/account` → **Applications**.
+3. Generate a fresh token at [https://trello.com/app-key](https://trello.com/app-key) and update **Settings**.
+
+### Trello: Board ID not found
+
+**Symptom:** Error mentioning the board was not found or access denied.
+
+**Resolution:**
+
+1. Open the Trello board in a browser and copy the 8-character ID from the URL:
+   ```
+   https://trello.com/b/AbCd1234/board-name
+                         ^^^^^^^^
+   ```
+2. Make sure your Trello account has access to the board.
+
+---
+
+### GitHub: "Missing GitHub token"
+
+**Symptom:** Error message: _"Missing GitHub token. Provide a PAT or sign in with GitHub."_
+
+**Resolution:**
+
+- Either sign in with GitHub, or open **Settings** and add a fine-grained or classic PAT.
+- The PAT needs **Issues (Read)** permission for the target repository.
+- See [Create a PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for guidance.
+
+### GitHub: 404 on repository
+
+**Symptom:** Connector shows as unhealthy; error mentions repository not found.
+
+**Resolution:**
+
+1. Verify the **Owner** and **Repository** fields are correct (case-sensitive).
+2. Confirm your GitHub account or token has read access to the repository.
+3. For private repositories, ensure the PAT includes **repo** (classic) or **Issues: Read** (fine-grained) scope.
+
+---
+
+### Microsoft Tasks / Outlook Flagged Mail: "Missing Microsoft sign-in token"
+
+**Symptom:** Connector fails with a missing token error.
+
+**Resolution:**
+
+- These connectors require an active Microsoft sign-in.
+- Sign in with Microsoft from the application and reload the dashboard.
+
 ## Connector Shows as Unhealthy
 
 **Symptom:** A connector displays an error or "unhealthy" status on the dashboard.
 
-**Resolution:**
+**General resolution steps:**
 
 1. Verify the credentials for that connector in **Settings**.
 2. Test connectivity to the provider from the same host.
 3. Check that the PAT / API token / OAuth token has not expired.
 4. Review application logs for detailed error messages.
+5. Refer to the connector-specific sections above for targeted guidance.
 
 ## Related
 
-- [Configuration](../configuration/README.md) – provider field reference.
-- [Features](../features/README.md) – overview of dashboard behavior.
+- [Configuration](../configuration/README.md) – provider field reference and credential setup.
+- [Features](../features/README.md) – overview of dashboard behavior and scoring.
+
