@@ -13,7 +13,8 @@
 			"git remote": true,
 			"git switch": true,
 			".github/ISSUE_TEMPLATE/specification.yml": true,
-			"Copy-Item": true			
+			"Copy-Item": true,
+			"git checkout": true
 		}
 	}
 }

@@ -1,5 +1,7 @@
 # Plan: Specification-First Agent Workflow
 
+## Status: COMPLETED
+
 ## Goal
 
 Enforce a repository workflow where each major change starts with a specification, then a proposed plan, then an automated implementation bootstrap (issue, branch, draft PR).
