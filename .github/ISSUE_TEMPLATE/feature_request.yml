@@ -1,0 +1,46 @@
+name: Feature Request
+description: Suggest a new feature or improvement for Priority Hub.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! For major changes, a specification issue may be required
+        before implementation begins. See [CONTRIBUTING.md](https://github.com/Data-Tech-International/Priority-Hub/blob/main/CONTRIBUTING.md) for the
+        specification-first workflow.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem are you trying to solve? What need or workflow does this address?
+      placeholder: Describe the pain point or use case.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or change you would like to see.
+      placeholder: What should Priority Hub do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried any workarounds or considered other approaches?
+      placeholder: Describe alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        > **Note:** Major features that affect architecture, public behavior, or multiple components
+        > require a specification before implementation. If your request is significant, a maintainer
+        > may ask you to open a [Specification issue](https://github.com/Data-Tech-International/Priority-Hub/issues/new?template=specification.yml) instead.

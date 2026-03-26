@@ -55,3 +55,9 @@ For agent and workflow details see [`.github/agents/`](../../.github/agents/) an
 
 - [Troubleshooting](../troubleshooting/README.md)
 - [Back to docs index](../README.md)
+
+## Contributing
+
+External contributors are welcome. See [CONTRIBUTING.md](../../CONTRIBUTING.md) at the repository
+root for the full contributor guide, including development setup, coding standards, commit
+conventions, and the pull request process.
