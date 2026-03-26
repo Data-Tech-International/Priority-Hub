@@ -21,8 +21,15 @@ This file is the workspace-level quick guide for AI agents. Detailed coding rule
 - Never commit secrets or local sensitive config.
 - Keep `config/providers.local.json` out of version control.
 
+### Versioning and Changelog (Mandatory)
+- Follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html): `MAJOR.MINOR.PATCH`.
+- Keep `package.json` and `backend/Directory.Build.props` at the same version string. Update both in the same commit on every release.
+- Every behavior change requires an entry under `[Unreleased]` in `CHANGELOG.md` (Keep a Changelog format).
+- See `AGENTS.md` for complete versioning and changelog rules.
+
 ### Documentation
-- Keep `README.md` as the source of truth for setup and usage.
+- Keep `README.md` as the entry point for setup, usage, and links to `docs/`.
+- Keep detailed user documentation in `docs/` (features, configuration, processes, troubleshooting).
 - Keep plan files in `plans/` updated with progress and verification steps.
 
 ### Documentation Environment Setup

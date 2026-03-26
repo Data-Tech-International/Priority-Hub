@@ -145,6 +145,17 @@ Key references:
 - `.github/copilot-setup-steps.yml` for agent environment setup.
 - `plans/` for approved implementation plans.
 
+## Documentation
+
+Full user documentation is in [`docs/`](docs/):
+
+- [Features](docs/features/README.md) – dashboard, priority ordering, and multi-connector model.
+- [Configuration](docs/configuration/README.md) – provider setup and credential management.
+- [Processes](docs/processes/README.md) – versioning, changelog, and contribution workflow.
+- [Troubleshooting](docs/troubleshooting/README.md) – common problems and resolution steps.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
 ## Project Structure
 
 ```text
@@ -154,6 +165,7 @@ backend/
   PriorityHub.Ui/             # Blazor Server frontend
   PriorityHub.Ui.Tests/       # bUnit component tests
 config/                       # Local provider config (gitignored)
+docs/                         # User-facing documentation
 plans/                        # Specifications and implementation plans
 ```
 

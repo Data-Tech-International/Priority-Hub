@@ -4,6 +4,14 @@ Purpose: implement approved work safely and consistently in Priority Hub (Blazor
 
 ## 1) Must Follow
 
+### Versioning and Changelog (Mandatory)
+- Follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html): `MAJOR.MINOR.PATCH`.
+  - Increment MAJOR for breaking changes, MINOR for new features, PATCH for bug fixes.
+- Keep `package.json` and `backend/Directory.Build.props` at the same version string at all times. Update both in the same commit when cutting a release.
+- Every behavior change **must** add an entry under `[Unreleased]` in `CHANGELOG.md` using the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+  - Use the standard subsections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
+- On release: rename `[Unreleased]` to the new version tag, open a new empty `[Unreleased]` section, and update the comparison links at the bottom of `CHANGELOG.md`.
+
 ### Process
 1. Read the linked specification issue and plan in `plans/` before coding.
 2. Implement only the assigned scope.
