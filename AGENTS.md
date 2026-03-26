@@ -4,6 +4,14 @@ Purpose: implement approved work safely and consistently in Priority Hub (Blazor
 
 ## 1) Must Follow
 
+### Versioning and Changelog (Mandatory)
+- Follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html): `MAJOR.MINOR.PATCH`.
+  - Increment MAJOR for breaking changes, MINOR for new features, PATCH for bug fixes.
+- Keep `package.json` and `backend/Directory.Build.props` at the same version string at all times. Update both in the same commit when cutting a release.
+- Every behavior change **must** add an entry under `[Unreleased]` in `CHANGELOG.md` using the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+  - Use the standard subsections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
+- On release: rename `[Unreleased]` to the new version tag, open a new empty `[Unreleased]` section, and update the comparison links at the bottom of `CHANGELOG.md`.
+
 ### Process
 1. Read the linked specification issue and plan in `plans/` before coding.
 2. Implement only the assigned scope.
@@ -47,10 +55,22 @@ Purpose: implement approved work safely and consistently in Priority Hub (Blazor
 
 ### Documentation Rules
 - Treat `README.md` as the canonical user setup and usage document.
+- Keep detailed user documentation in `docs/` organized by section: features, configuration, processes, troubleshooting.
 - Keep instructions task-based: prerequisites, steps, expected result, and troubleshooting.
 - Ensure all commands are copy-paste ready and tested in this repository.
 - Keep terminology consistent across README, plans, and UI labels.
 - Do not document unshipped or speculative behavior as current functionality.
+- Include realistic examples for all provider-specific fields (WIQL queries, JQL queries, JSON config snippets).
+  - Mark placeholder values clearly, e.g., `<your-pat>`, `your-org`.
+  - Derive examples from `config/providers.example.json` and connector `ConfigFields` defaults.
+- Link to official external documentation for each connector:
+  - Azure DevOps WIQL: https://learn.microsoft.com/en-us/azure/devops/boards/queries/wiql-syntax
+  - Azure DevOps PAT: https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate
+  - Jira JQL: https://support.atlassian.com/jira-software-cloud/docs/what-is-advanced-searching-in-jira-software/
+  - Jira API tokens: https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/
+  - Trello API key/token: https://trello.com/app-key
+  - GitHub issue search: https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
+  - GitHub PAT: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
 
 ## 2) Recommended
 
