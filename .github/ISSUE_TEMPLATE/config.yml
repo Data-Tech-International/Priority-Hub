@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Bug Report
+    url: https://github.com/Data-Tech-International/Priority-Hub/issues/new?template=bug_report.yml
+    about: Report a bug or unexpected behavior.
+  - name: Feature Request
+    url: https://github.com/Data-Tech-International/Priority-Hub/issues/new?template=feature_request.yml
+    about: Suggest a new feature or improvement.
+  - name: Specification (major change)
+    url: https://github.com/Data-Tech-International/Priority-Hub/issues/new?template=specification.yml
+    about: Propose a major change using the specification-first workflow.
+  - name: Security Vulnerability
+    url: https://github.com/Data-Tech-International/Priority-Hub/security/advisories/new
+    about: Report a security vulnerability privately (do not use a public issue).
