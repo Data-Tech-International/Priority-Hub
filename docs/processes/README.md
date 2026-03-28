@@ -2,6 +2,59 @@
 
 This section describes the development and contribution processes for Priority Hub.
 
+## Local Development Setup
+
+### Prerequisites
+
+- .NET 10 SDK
+- Node.js 20+ and npm
+- Docker (for the local PostgreSQL container)
+
+### Bootstrap (fresh clone)
+
+```bash
+# 1. Copy the Development configuration example (one-time step)
+cp backend/PriorityHub.Ui/appsettings.Development.example.json \
+   backend/PriorityHub.Ui/appsettings.Development.json
+
+# 2. Start the local database
+docker compose up -d
+
+# 3. Start the application with hot reload
+npm run dev
+```
+
+The application auto-applies pending schema migrations on startup in Development.
+No manual `CREATE TABLE` steps are required.
+
+### Stopping and resetting the database
+
+```bash
+# Stop the container but preserve data
+docker compose down
+
+# Full reset (removes the data volume)
+docker compose down -v
+```
+
+### Quick verification checklist
+
+After a fresh bootstrap:
+
+- [ ] `appsettings.Development.json` copied from the example file.
+- [ ] `docker compose ps` shows `postgres` in a healthy state.
+- [ ] `npm run dev` starts without errors.
+- [ ] Navigating to `http://localhost:5000` shows the login page.
+- [ ] Signing in, adding a connector, and restarting the app persists the connector.
+
+### Using file-based storage (no Docker)
+
+Override `ConfigStore:Provider` in user secrets or a local override file:
+
+```bash
+dotnet user-secrets set "ConfigStore:Provider" "File" --project backend/PriorityHub.Ui
+```
+
 ## Specification-First Workflow
 
 Major changes follow a specification-first delivery process.

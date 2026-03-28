@@ -3,7 +3,7 @@ using PriorityHub.Api.Models;
 namespace PriorityHub.Api.Services;
 
 public sealed class DashboardAggregator(
-    LocalConfigStore configStore,
+    IConfigStore configStore,
     ConnectorRegistry connectorRegistry)
 {
     public async Task<DashboardPayload> BuildAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, CancellationToken cancellationToken)
