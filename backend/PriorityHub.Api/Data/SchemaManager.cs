@@ -97,7 +97,10 @@ public sealed class SchemaManager(NpgsqlDataSource dataSource, IHostEnvironment 
             if (!TryParseVersion(fileName, out var version)) continue;
             if (applied.Contains(version)) continue;
 
-            using var stream = assembly.GetManifestResourceStream(resource)!;
+            using var stream = assembly.GetManifestResourceStream(resource)
+                ?? throw new InvalidOperationException(
+                    $"Embedded migration resource '{resource}' could not be loaded. " +
+                    "Verify the file is marked as EmbeddedResource in the project.");
             using var reader = new StreamReader(stream);
             var sql = reader.ReadToEnd();
 

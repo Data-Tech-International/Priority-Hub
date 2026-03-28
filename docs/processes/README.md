@@ -13,10 +13,14 @@ This section describes the development and contribution processes for Priority H
 ### Bootstrap (fresh clone)
 
 ```bash
-# 1. Start the local database
+# 1. Copy the Development configuration example (one-time step)
+cp backend/PriorityHub.Ui/appsettings.Development.example.json \
+   backend/PriorityHub.Ui/appsettings.Development.json
+
+# 2. Start the local database
 docker compose up -d
 
-# 2. Start the application with hot reload
+# 3. Start the application with hot reload
 npm run dev
 ```
 
@@ -37,6 +41,7 @@ docker compose down -v
 
 After a fresh bootstrap:
 
+- [ ] `appsettings.Development.json` copied from the example file.
 - [ ] `docker compose ps` shows `postgres` in a healthy state.
 - [ ] `npm run dev` starts without errors.
 - [ ] Navigating to `http://localhost:5000` shows the login page.
