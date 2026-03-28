@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PriorityHub.Api.Tests;
 
@@ -23,3 +24,12 @@ internal sealed class TestHostEnvironment(string contentRootPath) : IHostEnviron
     public string ContentRootPath { get; set; } = contentRootPath;
     public IFileProvider ContentRootFileProvider { get; set; } = null!;
 }
+
+/// <summary>No-op ILogger implementation for tests.</summary>
+internal sealed class TestLogger<T> : ILogger<T>
+{
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public bool IsEnabled(LogLevel logLevel) => false;
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+}
+

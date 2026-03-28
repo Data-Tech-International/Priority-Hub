@@ -8,20 +8,22 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
-- `CONTRIBUTING.md` at repo root covering contributor guide, development setup, coding standards, commit conventions, and PR checklist.
-- `CODE_OF_CONDUCT.md` at repo root with Contributor Covenant v2.1.
-- `SECURITY.md` at repo root with responsible disclosure policy, scope, reporting method, and response timeline.
-- `.github/ISSUE_TEMPLATE/bug_report.yml` — bug report template with auto-label `bug`.
-- `.github/ISSUE_TEMPLATE/feature_request.yml` — feature request template with auto-label `enhancement`.
-- `.github/ISSUE_TEMPLATE/config.yml` — template chooser listing all issue templates.
-- `package.json` open-source metadata: `description`, `author`, `license`, `keywords`, `repository`, `bugs`, `homepage` fields; `private: true` removed.
-- CI status badge and MIT license badge in `README.md`.
-- Contributing, License, and Security sections in `README.md`.
-- Contributing section in `docs/processes/README.md` linking to `CONTRIBUTING.md`.
-- `backend/Directory.Build.props` for centralized .NET version alignment with `package.json`.
-- `CHANGELOG.md` in Keep a Changelog format.
-- `docs/` markdown skeleton covering features, configuration, processes, and troubleshooting.
-- Semantic Versioning and changelog governance rules in `AGENTS.md` and `.github/copilot-instructions.md`.
+- `IConfigStore` interface abstracting per-user configuration persistence (`PriorityHub.Api/Services/IConfigStore.cs`).
+- `PostgresConfigStore` storing configuration as JSONB with a monotonically increasing `version` column for write auditing (`PriorityHub.Api/Services/PostgresConfigStore.cs`).
+- `SchemaManager` that auto-applies SQL migrations embedded in the assembly; auto-runs in Development and fails fast on mismatch in other environments (`PriorityHub.Api/Data/SchemaManager.cs`).
+- SQL migration `0001_initial_schema.sql` creating the `schema_migrations` and `user_config` tables.
+- `ConfigStoreServiceExtensions.AddConfigStore` selects `Postgres` or `File` provider based on `ConfigStore:Provider` configuration key (`PriorityHub.Api/Extensions/ConfigStoreServiceExtensions.cs`).
+- `ConfigStore:Provider` and `ConfigStore:ConnectionString` configuration keys in `appsettings.json` (default: `File`).
+- `appsettings.Development.json` in both `PriorityHub.Ui` and `PriorityHub.Api` defaulting to `Postgres` with local container credentials.
+- `docker-compose.yml` at the repository root providing a one-command PostgreSQL 16 container for local development.
+- Integration tests for `PostgresConfigStore` and `SchemaManager` using ephemeral `Testcontainers.PostgreSql` containers (`PriorityHub.Api.Tests/PostgresConfigStoreIntegrationTests.cs`).
+- Contributing guide, issue templates, CI badges, docs skeleton, semantic versioning governance.
+
+### Changed
+- `LocalConfigStore` now implements `IConfigStore`.
+- `DashboardAggregator` depends on `IConfigStore` instead of the concrete `LocalConfigStore`.
+- Both `Program.cs` files register `IConfigStore` via `AddConfigStore` and run `ApplyDatabaseMigrationsAsync` before `app.Run()`.
+- README updated with Docker, local database bootstrap, and project structure changes.
 
 ## [0.2.0] - 2025-01-01
 

@@ -29,6 +29,7 @@ The Blazor Server UI and ASP.NET Core services run in the same host process.
 
 - .NET 10 SDK
 - Node.js 20+ and npm (used for repository script wrappers)
+- Docker (for the local PostgreSQL container)
 
 Verify your environment:
 
@@ -36,17 +37,72 @@ Verify your environment:
 dotnet --version
 node --version
 npm --version
+docker --version
+```
+
+## Local Database Setup
+
+Priority Hub uses PostgreSQL (JSONB) to store per-user configuration in Development.
+A pre-configured Docker Compose file is included for a zero-friction local setup.
+
+### Start PostgreSQL
+
+```bash
+docker compose up -d
+```
+
+This starts a PostgreSQL 16 container on port `5432` with:
+
+| Setting    | Value          |
+|------------|----------------|
+| Host       | `localhost`    |
+| Port       | `5432`         |
+| Database   | `priorityhub`  |
+| Username   | `priorityhub`  |
+| Password   | `dev_password` |
+
+The application auto-runs any pending schema migrations on startup in Development,
+so no manual `CREATE TABLE` steps are required.
+
+### Stop and Wipe Data
+
+```bash
+# Stop and remove containers (data volume is preserved)
+docker compose down
+
+# Stop and remove containers AND the data volume (full reset)
+docker compose down -v
+```
+
+### Using File-Based Storage Instead
+
+If you prefer to skip Docker, you can revert to the legacy file-based store by
+overriding the `ConfigStore:Provider` value in your local user secrets or
+`appsettings.Development.json`:
+
+```json
+{
+  "ConfigStore": {
+    "Provider": "File"
+  }
+}
 ```
 
 ## Start The App
 
-1. From repository root, start the app:
+1. Start the local database (requires Docker):
+
+```bash
+docker compose up -d
+```
+
+2. From repository root, start the app:
 
 ```bash
 npm run dev
 ```
 
-2. Alternative direct command:
+3. Alternative direct command:
 
 ```bash
 dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
@@ -56,6 +112,7 @@ Expected result:
 
 - The Blazor UI starts with hot reload.
 - You can open the dashboard and navigate to Settings.
+- Schema migrations are applied automatically on the first run.
 
 ## Configure Connectors
 
@@ -164,10 +221,12 @@ See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 ```text
 backend/
   PriorityHub.Api/            # Backend services, models, connectors
-  PriorityHub.Api.Tests/      # xUnit backend tests
+    Data/Migrations/          # SQL schema migration scripts
+  PriorityHub.Api.Tests/      # xUnit backend tests (unit + integration)
   PriorityHub.Ui/             # Blazor Server frontend
   PriorityHub.Ui.Tests/       # bUnit component tests
 config/                       # Local provider config (gitignored)
+docker-compose.yml            # Local PostgreSQL container
 docs/                         # User-facing documentation
 plans/                        # Specifications and implementation plans
 ```
