@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Components.Authorization;
+using PriorityHub.Api.Extensions;
 using PriorityHub.Api.Models;
 using PriorityHub.Api.Services;
 using PriorityHub.Api.Services.Connectors;
@@ -21,7 +22,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // ── Backend services (shared with API) ──
-builder.Services.AddSingleton<LocalConfigStore>();
+builder.Services.AddConfigStore(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<AzureDevOpsConnector>();
 builder.Services.AddHttpClient<GitHubIssuesConnector>();
@@ -250,14 +251,14 @@ app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
     return Results.Redirect("/login");
 }).RequireAuthorization();
 
-app.MapGet("/api/config", async (HttpContext httpContext, LocalConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapGet("/api/config", async (HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
     var config = await configStore.LoadAsync(userId, cancellationToken);
     return Results.Ok(config);
 }).RequireAuthorization();
 
-app.MapPut("/api/config", async (HttpContext httpContext, ProviderConfiguration configuration, LocalConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapPut("/api/config", async (HttpContext httpContext, ProviderConfiguration configuration, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
     await configStore.SaveAsync(userId, configuration, cancellationToken);
@@ -265,7 +266,7 @@ app.MapPut("/api/config", async (HttpContext httpContext, ProviderConfiguration 
     return Results.Ok(saved);
 }).RequireAuthorization();
 
-app.MapPut("/api/preferences/order", async (HttpContext httpContext, UserPreferences preferences, LocalConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapPut("/api/preferences/order", async (HttpContext httpContext, UserPreferences preferences, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
     var config = await configStore.LoadAsync(userId, cancellationToken);
@@ -308,6 +309,8 @@ app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAgg
 // ── Blazor routes ──
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+await app.ApplyDatabaseMigrationsAsync();
 
 app.Run();
 

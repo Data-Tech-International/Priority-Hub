@@ -1,7 +1,39 @@
 # Configuration
 
 Priority Hub connectors are configured through the **Settings** page in the UI.
-Credentials are stored in `config/providers.local.json` on the server and are never committed to version control.
+Provider credentials are stored in PostgreSQL (default) or in local JSON files, and are never committed to version control.
+
+## Storage Back-end
+
+The active storage back-end is selected by the `ConfigStore:Provider` key in `appsettings.json`
+(or any higher-priority configuration source):
+
+| Value      | Description                                                           | Default environment |
+|------------|-----------------------------------------------------------------------|---------------------|
+| `Postgres` | Stores per-user config as JSONB in a PostgreSQL database.             | Development         |
+| `File`     | Stores per-user config as JSON files in `config/users/` on disk.     | All others          |
+
+### PostgreSQL connection string
+
+When `ConfigStore:Provider` is `Postgres`, you must also supply `ConfigStore:ConnectionString`.
+
+The recommended approach is **user secrets** (never commit connection strings):
+
+```bash
+dotnet user-secrets set "ConfigStore:ConnectionString" "Host=localhost;Database=priorityhub;Username=priorityhub;Password=dev_password" \
+  --project backend/PriorityHub.Ui
+```
+
+For convenience, `appsettings.Development.json` ships with the default docker-compose credentials.
+Override this file or use user secrets to connect to a different instance.
+
+### Schema migrations
+
+Migrations live in `backend/PriorityHub.Api/Data/Migrations/` and are embedded in the assembly.
+
+- **Development**: migrations are applied automatically on startup.
+- **Other environments**: the application fails fast with a clear error if unapplied migrations are detected.
+  Run migrations manually (e.g., using `psql` or a migration tool) before deploying.
 
 ## Adding a Connector
 
