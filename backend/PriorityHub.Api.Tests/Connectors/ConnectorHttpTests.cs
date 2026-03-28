@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
 using PriorityHub.Api.Models;
 using PriorityHub.Api.Services.Connectors;
 
@@ -46,7 +47,7 @@ public sealed class ConnectorHttpTests
         }
         """);
 
-        var connector = new AzureDevOpsConnector(ClientWith(wiqlResponse, batchResponse));
+        var connector = new AzureDevOpsConnector(ClientWith(wiqlResponse, batchResponse), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
@@ -63,7 +64,7 @@ public sealed class ConnectorHttpTests
     {
         var wiqlResponse = OkJson("""{"workItems":[]}""");
 
-        var connector = new AzureDevOpsConnector(ClientWith(wiqlResponse));
+        var connector = new AzureDevOpsConnector(ClientWith(wiqlResponse), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "pat", wiql = "SELECT [System.Id] FROM WorkItems WHERE [State] = 'Never'", enabled = true });
 
         var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
@@ -77,7 +78,7 @@ public sealed class ConnectorHttpTests
     [Fact]
     public async Task AzureDevOps_UnauthorizedResponse_ReturnsNeedsAuth()
     {
-        var connector = new AzureDevOpsConnector(ClientWith(Unauthorized()));
+        var connector = new AzureDevOpsConnector(ClientWith(Unauthorized()), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "bad-pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
@@ -90,7 +91,7 @@ public sealed class ConnectorHttpTests
     [Fact]
     public async Task AzureDevOps_MissingToken_ReturnsNeedsAuthWithoutHttpCall()
     {
-        var connector = new AzureDevOpsConnector(new HttpClient(new NeverCalledHttpMessageHandler()));
+        var connector = new AzureDevOpsConnector(new HttpClient(new NeverCalledHttpMessageHandler()), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
@@ -107,7 +108,7 @@ public sealed class ConnectorHttpTests
             Content = new StringContent("<html><body>Sign in to your account</body></html>", Encoding.UTF8, "text/html")
         };
 
-        var connector = new AzureDevOpsConnector(ClientWith(htmlResponse));
+        var connector = new AzureDevOpsConnector(ClientWith(htmlResponse), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "expired-token", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
@@ -115,8 +116,28 @@ public sealed class ConnectorHttpTests
         Assert.Single(result.BoardConnections);
         Assert.Equal("needs-auth", result.BoardConnections[0].SyncStatus);
         Assert.Contains(result.Issues, issue =>
-            issue.Message.Contains("HTML") &&
-            issue.Message.Contains("sign-in", StringComparison.OrdinalIgnoreCase));
+            issue.Message.Contains("sign-in", StringComparison.OrdinalIgnoreCase) ||
+            issue.Message.Contains("not valid", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task AzureDevOps_404NotFound_ReportsOrgProjectError()
+    {
+        var htmlResponse = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent("<html><body>The resource cannot be found.</body></html>", Encoding.UTF8, "text/html")
+        };
+
+        var connector = new AzureDevOpsConnector(ClientWith(htmlResponse), NullLogger<AzureDevOpsConnector>.Instance);
+        var config = ConnectionJson(new { id = "x", name = "Test", organization = "badorg", project = "badproj", personalAccessToken = "", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, "valid-bearer", CancellationToken.None);
+
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("needs-auth", result.BoardConnections[0].SyncStatus);
+        Assert.Contains(result.Issues, issue =>
+            issue.Message.Contains("404", StringComparison.OrdinalIgnoreCase) &&
+            issue.Message.Contains("organization", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -126,7 +147,7 @@ public sealed class ConnectorHttpTests
         var wiqlResponse = OkJson("""{"workItems":[]}""");
         var handler = new CapturingHttpMessageHandler(wiqlResponse, r => capturedAuth = r.Headers.Authorization);
 
-        var connector = new AzureDevOpsConnector(new HttpClient(handler));
+        var connector = new AzureDevOpsConnector(new HttpClient(handler), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "my-pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         await connector.FetchConnectionAsync(config, "oauth-bearer-token", CancellationToken.None);
@@ -143,13 +164,47 @@ public sealed class ConnectorHttpTests
         var wiqlResponse = OkJson("""{"workItems":[]}""");
         var handler = new CapturingHttpMessageHandler(wiqlResponse, r => capturedAuth = r.Headers.Authorization);
 
-        var connector = new AzureDevOpsConnector(new HttpClient(handler));
+        var connector = new AzureDevOpsConnector(new HttpClient(handler), NullLogger<AzureDevOpsConnector>.Instance);
         var config = ConnectionJson(new { id = "x", name = "Test", organization = "myorg", project = "myproj", personalAccessToken = "my-pat", wiql = "SELECT [System.Id] FROM WorkItems", enabled = true });
 
         await connector.FetchConnectionAsync(config, null, CancellationToken.None);
 
         Assert.NotNull(capturedAuth);
         Assert.Equal("Basic", capturedAuth!.Scheme);
+    }
+
+    [Fact]
+    public async Task AzureDevOps_WhenBearerTokenInvalid_FallsBackToPat()
+    {
+        var htmlAuthFailure = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent("<html><body>Sign in</body></html>", Encoding.UTF8, "text/html")
+        };
+
+        var wiqlSuccess = OkJson("""{"workItems":[]}""");
+        var capturedSchemes = new List<string>();
+        var handler = new CapturingQueuedHttpMessageHandler(
+            new Queue<HttpResponseMessage>([htmlAuthFailure, wiqlSuccess]),
+            request => capturedSchemes.Add(request.Headers.Authorization?.Scheme ?? string.Empty));
+
+        var connector = new AzureDevOpsConnector(new HttpClient(handler), NullLogger<AzureDevOpsConnector>.Instance);
+        var config = ConnectionJson(new
+        {
+            id = "x",
+            name = "Test",
+            organization = "myorg",
+            project = "myproj",
+            personalAccessToken = "my-pat",
+            wiql = "SELECT [System.Id] FROM WorkItems",
+            enabled = true
+        });
+
+        var result = await connector.FetchConnectionAsync(config, "invalid-oauth-token", CancellationToken.None);
+
+        Assert.Equal(["Bearer", "Basic"], capturedSchemes);
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+        Assert.Empty(result.Issues);
     }
 
     // ── GitHub ───────────────────────────────────────────────────────────────
@@ -332,5 +387,20 @@ internal sealed class CapturingHttpMessageHandler(HttpResponseMessage response, 
     {
         onRequest(request);
         return Task.FromResult(response);
+    }
+}
+
+internal sealed class CapturingQueuedHttpMessageHandler(Queue<HttpResponseMessage> responses, Action<HttpRequestMessage> onRequest) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        onRequest(request);
+
+        if (responses.Count == 0)
+        {
+            throw new InvalidOperationException("No more queued HTTP responses.");
+        }
+
+        return Task.FromResult(responses.Dequeue());
     }
 }

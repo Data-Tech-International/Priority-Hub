@@ -24,6 +24,8 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 - `DashboardPage` and `SettingsPage` now inject `IConfigStore` instead of the concrete `LocalConfigStore`, resolving the `InvalidOperationException` at runtime when only the interface is registered in DI.
+- Azure DevOps connector now retries with configured PAT when Microsoft bearer token yields HTML sign-in/auth failures, avoiding false PAT guidance when a valid PAT is already provided.
+- Microsoft OAuth refresh-token exchange now requests Azure DevOps token using `https://app.vssps.visualstudio.com/user_impersonation` with GUID-scope fallback, reducing invalid Azure DevOps bearer token responses for Microsoft sign-in users.
 
 ### Changed
 - `LocalConfigStore` now implements `IConfigStore`.
