@@ -101,8 +101,83 @@ Pull requests and main-branch pushes run:
 2. Security scanning (dependencies and secret detection).
 3. Static analysis.
 4. Test and coverage validation.
+5. Docker image build (PR to `main`: build only; push to `main`: build and publish to GHCR).
 
 For agent and workflow details see [`.github/agents/`](../../.github/agents/) and [`.github/MCP-INTEGRATION.md`](../../.github/MCP-INTEGRATION.md).
+
+## Docker Image Lifecycle
+
+The `.github/workflows/docker-image.yml` workflow manages the container image lifecycle.
+
+| Trigger | Build | Publish to GHCR |
+|---|---|---|
+| Pull request targeting `main` | ✔ | ✗ |
+| Push to `main` | ✔ | ✔ |
+| `workflow_dispatch` (any branch) | ✔ | ✗ |
+
+Published images use the following tags:
+
+- `sha-<short-commit-sha>` – immutable, one per commit
+- `<branch-name>` – mutable, updated on every push to that branch
+- `latest` – always points to the most recent push to `main`
+
+### Local Docker build
+
+```bash
+docker build -t priority-hub:local .
+```
+
+### Run locally with PostgreSQL
+
+```bash
+# Start the database
+docker compose up -d
+
+# Linux: use host networking so the container reaches localhost PostgreSQL
+docker run --rm -it \
+  --network host \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=localhost;Database=priorityhub;Username=priorityhub;Password=dev_password" \
+  -e Authentication__GitHub__ClientId=<your-client-id> \
+  -e Authentication__GitHub__ClientSecret=<your-client-secret> \
+  priority-hub:local
+
+# macOS / Windows (Docker Desktop): use host.docker.internal instead
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=host.docker.internal;Database=priorityhub;Username=priorityhub;Password=dev_password" \
+  -e Authentication__GitHub__ClientId=<your-client-id> \
+  -e Authentication__GitHub__ClientSecret=<your-client-secret> \
+  -p 8080:8080 \
+  priority-hub:local
+```
+
+### Pull and run a published image
+
+```bash
+# Log in to GHCR
+echo $GITHUB_TOKEN | docker login ghcr.io -u <github-username> --password-stdin
+
+# Pull latest
+docker pull ghcr.io/data-tech-international/priority-hub:latest
+
+# Run
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=<db-host>;Database=priorityhub;Username=priorityhub;Password=<password>" \
+  -p 8080:8080 \
+  ghcr.io/data-tech-international/priority-hub:latest
+```
+
+### Roll back to a prior image
+
+```bash
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="..." \
+  -p 8080:8080 \
+  ghcr.io/data-tech-international/priority-hub:sha-<short-sha>
+```
 
 ## Related
 

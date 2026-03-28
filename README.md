@@ -131,7 +131,7 @@ Expected result:
 
 Expected result:
 
-- Configuration is persisted to `config/providers.local.json`.
+- Configuration is persisted to PostgreSQL (or `config/providers.local.json` when using file store).
 - Connectors appear in the dashboard aggregation.
 
 Required fields by provider:
@@ -144,6 +144,138 @@ Notes:
 
 - Client-side validation prevents saving incomplete or invalid forms.
 - `config/providers.local.json` is gitignored and must not be committed.
+
+## Container Quickstart
+
+Priority Hub ships with a production-ready multi-stage Dockerfile. The container exposes port `8080` and defaults to `ASPNETCORE_ENVIRONMENT=Production`.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- A PostgreSQL instance (see [Local PostgreSQL via Docker](#local-postgresql-via-docker))
+- OAuth app credentials (GitHub and/or Microsoft)
+
+### Build the image
+
+```bash
+docker build -t priority-hub:local .
+```
+
+### Local PostgreSQL via Docker
+
+```bash
+docker compose up -d
+```
+
+This starts a PostgreSQL 16 container on `localhost:5432` with the credentials shown in [Local Database Setup](#local-database-setup).
+
+### Run the container
+
+On **Linux** (using host networking so the container can reach the local PostgreSQL):
+
+```bash
+docker run --rm -it \
+  --network host \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=localhost;Database=priorityhub;Username=priorityhub;Password=dev_password" \
+  -e Authentication__GitHub__ClientId=<your-github-client-id> \
+  -e Authentication__GitHub__ClientSecret=<your-github-client-secret> \
+  priority-hub:local
+```
+
+On **macOS / Windows** (Docker Desktop does not support `--network host`; use `host.docker.internal` instead):
+
+```bash
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=host.docker.internal;Database=priorityhub;Username=priorityhub;Password=dev_password" \
+  -e Authentication__GitHub__ClientId=<your-github-client-id> \
+  -e Authentication__GitHub__ClientSecret=<your-github-client-secret> \
+  -p 8080:8080 \
+  priority-hub:local
+```
+
+Replace `<your-github-client-id>` and `<your-github-client-secret>` with your OAuth app credentials.
+See [docs/configuration/README.md](docs/configuration/README.md) for the full environment variable reference.
+
+Expected result:
+
+- Container starts and logs `Application started. Press Ctrl+C to shut down.`
+- Health check responds: `curl http://localhost:8080/api/health`
+
+### Verify startup
+
+```bash
+# Check the health endpoint
+curl http://localhost:8080/api/health
+# Expected: {"ok":true,"generatedAt":"..."}
+
+# Inspect container logs
+docker logs <container-id>
+```
+
+### Using a published image from GHCR
+
+Images are published to GitHub Container Registry on every push to `main`.
+
+```bash
+# Log in to GHCR (one-time)
+echo $GITHUB_TOKEN | docker login ghcr.io -u <your-github-username> --password-stdin
+
+# Pull the latest image
+docker pull ghcr.io/data-tech-international/priority-hub:latest
+
+# Run the published image
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="Host=<db-host>;Database=priorityhub;Username=priorityhub;Password=<password>" \
+  -e Authentication__GitHub__ClientId=<your-client-id> \
+  -e Authentication__GitHub__ClientSecret=<your-client-secret> \
+  -p 8080:8080 \
+  ghcr.io/data-tech-international/priority-hub:latest
+```
+
+### Roll back to a prior image
+
+Each published image is tagged with `sha-<short-commit-sha>` for traceability.
+
+```bash
+# List available tags
+docker pull ghcr.io/data-tech-international/priority-hub:<sha-tag>
+
+# Run a specific version
+docker run --rm -it \
+  -e ConfigStore__Provider=Postgres \
+  -e ConfigStore__ConnectionString="..." \
+  -p 8080:8080 \
+  ghcr.io/data-tech-international/priority-hub:sha-abc1234
+```
+
+### Deployment configuration
+
+| Environment variable | Required | Description |
+|---|---|---|
+| `ConfigStore__Provider` | ✔ | Set to `Postgres` for containerized deployments |
+| `ConfigStore__ConnectionString` | ✔ (when Postgres) | PostgreSQL connection string |
+| `Authentication__GitHub__ClientId` | ✔ (if using GitHub login) | GitHub OAuth app client ID |
+| `Authentication__GitHub__ClientSecret` | ✔ (if using GitHub login) | GitHub OAuth app client secret |
+| `Authentication__Microsoft__ClientId` | ✔ (if using Microsoft login) | Microsoft OAuth app client ID |
+| `Authentication__Microsoft__ClientSecret` | ✔ (if using Microsoft login) | Microsoft OAuth app client secret |
+| `Authentication__Microsoft__TenantId` | optional | Microsoft tenant ID (default: `common`) |
+| `ASPNETCORE_URLS` | optional | Override listen address (default: `http://+:8080`) |
+
+**Reverse proxy and HTTPS:** Run the container behind a reverse proxy (nginx, Caddy, Traefik) that handles TLS termination. The proxy must forward `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` headers so ASP.NET Core can reconstruct the correct public URL for OAuth callbacks. Enable forwarded-headers middleware in the application if deploying behind a proxy (the `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` environment variable enables this for ASP.NET Core).
+
+**Sticky sessions:** Blazor Server uses persistent SignalR connections. When running multiple container replicas, configure session affinity (sticky sessions) at your load balancer so each browser session is always routed to the same replica.
+
+**Database migrations:** In `Production` the application validates that all migrations have been applied and will fail fast if any are pending. Apply migrations manually before deploying a new image version:
+
+```bash
+# Using psql directly
+psql -h <db-host> -U priorityhub -d priorityhub -f backend/PriorityHub.Api/Data/Migrations/0001_initial_schema.sql
+```
+
+**Database backups:** Back up your PostgreSQL database before deploying a new image that includes schema migrations.
 
 ## Build, Test, And Quality Checks
 
@@ -195,6 +327,7 @@ Pull requests and main-branch updates run:
 2. Security scanning (dependencies and secret detection).
 3. Static analysis.
 4. Test and coverage validation.
+5. Docker image build (PR to `main`: build only; push to `main`: build and publish to GHCR).
 
 For agent and workflow details, see [.github/agents/](.github/agents/) and [.github/MCP-INTEGRATION.md](.github/MCP-INTEGRATION.md).
 
@@ -236,6 +369,8 @@ backend/
   PriorityHub.Ui.Tests/       # bUnit component tests
 config/                       # Local provider config (gitignored)
 docker-compose.yml            # Local PostgreSQL container
+Dockerfile                    # Multi-stage production container build
+.dockerignore                 # Files excluded from Docker build context
 docs/                         # User-facing documentation
 plans/                        # Specifications and implementation plans
 ```
@@ -260,6 +395,18 @@ No data in dashboard:
 Missing local config:
 
 - If `config/providers.local.json` does not exist or is empty, the app still starts and returns an empty dashboard payload so configuration can be completed in the UI.
+
+Container startup crash:
+
+- Check for missing required environment variables (`ConfigStore__Provider`, `ConfigStore__ConnectionString`).
+- Confirm PostgreSQL is reachable from the container (`docker logs <container-id>`).
+- Ensure schema migrations have been applied for non-Development environments.
+
+OAuth callback URL mismatch in a container:
+
+- Register `http(s)://<your-host>/api/auth/callback/github` and `/api/auth/callback/microsoft` in your OAuth app settings.
+
+See [docs/troubleshooting/README.md](docs/troubleshooting/README.md) for detailed guidance.
 
 ## Contributing
 
