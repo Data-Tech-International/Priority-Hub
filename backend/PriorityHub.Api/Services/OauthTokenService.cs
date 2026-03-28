@@ -13,7 +13,11 @@ namespace PriorityHub.Api.Services;
 /// </summary>
 public sealed class OauthTokenService(IConfiguration configuration, ILogger<OauthTokenService> logger, IHttpClientFactory httpClientFactory)
 {
-    private const string AzureDevOpsScope = "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation";
+    private static readonly string[] AzureDevOpsScopes =
+    [
+        "https://app.vssps.visualstudio.com/user_impersonation",
+        "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"
+    ];
     private const string MicrosoftGraphScope = "User.Read Tasks.Read Mail.Read offline_access";
 
     /// <summary>
@@ -59,19 +63,19 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
             tokens["microsoft-tasks"] = effectiveMicrosoftAccessToken;
             tokens["outlook-flagged-mail"] = effectiveMicrosoftAccessToken;
 
-            var azureDevOpsAccessToken = await RequestAccessTokenFromRefreshTokenAsync(
+            var azureDevOpsAccessToken = await RequestAzureDevOpsTokenAsync(
                 microsoftSection,
                 effectiveRefreshToken,
-                AzureDevOpsScope,
                 cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(azureDevOpsAccessToken?.AccessToken))
             {
+                    logger.LogDebug("Azure DevOps OAuth token obtained successfully (length={Length}).", azureDevOpsAccessToken.AccessToken.Length);
                 tokens["azure-devops"] = azureDevOpsAccessToken.AccessToken;
             }
             else
             {
-                logger.LogWarning("Failed to exchange refresh token for Azure DevOps access token. Azure DevOps connections will require a PAT.");
+                logger.LogWarning("Failed to exchange refresh token for Azure DevOps access token. Azure DevOps connections will require a PAT. refreshToken present={HasRefresh}", !string.IsNullOrWhiteSpace(effectiveRefreshToken));
             }
         }
 
@@ -81,6 +85,36 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         }
 
         return tokens;
+    }
+
+    private async Task<TokenExchangeResult?> RequestAzureDevOpsTokenAsync(
+        IConfigurationSection microsoftSection,
+        string? refreshToken,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Azure DevOps token exchange: refreshToken present={HasRefresh}", !string.IsNullOrWhiteSpace(refreshToken));
+
+        foreach (var scope in AzureDevOpsScopes)
+        {
+            logger.LogDebug("Azure DevOps token exchange: trying scope {Scope}", scope);
+
+            var result = await RequestAccessTokenFromRefreshTokenAsync(
+                microsoftSection,
+                refreshToken,
+                scope,
+                cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(result?.AccessToken))
+            {
+                logger.LogDebug("Azure DevOps token exchange: scope {Scope} succeeded, token length={Length}", scope, result.AccessToken.Length);
+                return result;
+            }
+
+            logger.LogDebug("Azure DevOps token exchange: scope {Scope} returned no token.", scope);
+        }
+
+        logger.LogWarning("Azure DevOps token exchange: all scopes exhausted, no token obtained.");
+        return null;
     }
 
     private async Task PersistRefreshedTokensAsync(
