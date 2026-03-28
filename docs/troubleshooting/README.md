@@ -202,3 +202,83 @@
 - [Configuration](../configuration/README.md) – provider field reference and credential setup.
 - [Features](../features/README.md) – overview of dashboard behavior and scoring.
 
+---
+
+## Container Issues
+
+### Container startup crash: missing environment variables
+
+**Symptom:** Container exits immediately with an `InvalidOperationException` mentioning `ConfigStore:ConnectionString`.
+
+**Resolution:**
+
+1. Ensure `ConfigStore__Provider` is set to `Postgres` and `ConfigStore__ConnectionString` is a valid PostgreSQL connection string. Example run command:
+   ```bash
+   docker run --rm -it \
+     -e ConfigStore__Provider=Postgres \
+     -e ConfigStore__ConnectionString="Host=<db-host>;Database=priorityhub;Username=priorityhub;Password=<password>" \
+     -p 8080:8080 \
+     priority-hub:local
+   ```
+2. Check container logs for the exact error:
+   ```bash
+   docker logs <container-id>
+   ```
+
+### Container startup crash: database not reachable
+
+**Symptom:** Container starts but exits shortly after, with a connection refused or timeout error.
+
+**Resolution:**
+
+1. Confirm the PostgreSQL container is running and healthy:
+   ```bash
+   docker compose ps
+   ```
+2. Use the appropriate hostname depending on your platform:
+   - **Linux with `--network host`**: the container uses the host's network stack directly, so `localhost` reaches the host's PostgreSQL. No `-p` flag is needed in this mode.
+   - **macOS / Windows (Docker Desktop)**: `--network host` is not supported. Use `host.docker.internal` as the database hostname and publish the port with `-p 8080:8080`:
+     ```
+     Host=host.docker.internal;Database=priorityhub;Username=priorityhub;Password=dev_password
+     ```
+
+### Container startup crash: schema migration mismatch
+
+**Symptom:** Application logs show an error about unapplied migrations in a non-Development environment.
+
+**Resolution:**
+
+Apply the pending migration scripts manually before restarting the container:
+
+```bash
+psql -h <db-host> -U priorityhub -d priorityhub \
+  -f backend/PriorityHub.Api/Data/Migrations/0001_initial_schema.sql
+```
+
+### OAuth callback URL mismatch
+
+**Symptom:** After successful sign-in, the OAuth provider redirects to an error page or returns `redirect_uri_mismatch`.
+
+**Resolution:**
+
+Register the exact callback URL used by the container in your OAuth app settings:
+
+- GitHub: `https://<your-host>/api/auth/callback/github`
+- Microsoft: `https://<your-host>/api/auth/callback/microsoft`
+
+Callback paths are fixed and cannot be changed via configuration.
+
+### Port conflict on startup
+
+**Symptom:** `docker run` fails with `address already in use` on port `8080`.
+
+**Resolution:**
+
+Map the container port to a different host port:
+
+```bash
+docker run ... -p 8888:8080 priority-hub:local
+```
+
+Then access the application at `http://localhost:8888`.
+
