@@ -19,7 +19,8 @@ COPY backend/ backend/
 RUN dotnet publish backend/PriorityHub.Ui/PriorityHub.Ui.csproj \
         --no-restore \
         --configuration Release \
-        --output /app/publish
+        --output /app/publish \
+        /p:ErrorOnDuplicatePublishOutputFiles=false
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
