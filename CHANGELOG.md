@@ -22,6 +22,9 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `.dockerignore` excluding build outputs, secrets, editor caches, and local config from the Docker build context.
 - GitHub Actions workflow `.github/workflows/docker-image.yml` — builds on every pull request to `main`, builds and publishes to GHCR on push to `main`, and supports `workflow_dispatch` on any branch; adds OCI labels and commit-SHA/branch tags; cancels superseded runs per ref.
 
+### Fixed
+- `DashboardPage` and `SettingsPage` now inject `IConfigStore` instead of the concrete `LocalConfigStore`, resolving the `InvalidOperationException` at runtime when only the interface is registered in DI.
+
 ### Changed
 - `LocalConfigStore` now implements `IConfigStore`.
 - `DashboardAggregator` depends on `IConfigStore` instead of the concrete `LocalConfigStore`.
