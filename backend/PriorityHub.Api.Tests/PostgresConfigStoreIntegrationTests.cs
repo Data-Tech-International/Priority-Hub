@@ -44,7 +44,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
 
     // ── LoadAsync ────────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task LoadAsync_UnknownUser_ReturnsNormalizedEmptyConfig()
     {
         var store = CreateStore();
@@ -61,7 +61,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
 
     // ── SaveAsync / LoadAsync round-trip ─────────────────────────────────────
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task SaveAsync_ThenLoadAsync_ReturnsSameData()
     {
         var store = CreateStore();
@@ -86,7 +86,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
         Assert.Contains("ADO-1", loaded.Preferences.OrderedItemIds);
     }
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task SaveAsync_CalledTwice_OverwritesData()
     {
         var store = CreateStore();
@@ -110,7 +110,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
         Assert.Equal("Second Board", loaded.Trello[0].Name);
     }
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task SaveAsync_IncrementsVersion()
     {
         var store = CreateStore();
@@ -128,7 +128,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(2, version);
     }
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task SaveAsync_IsolatesByUserId()
     {
         var store = CreateStore();
@@ -156,7 +156,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
 
     // ── SchemaManager ────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkipIfNoDockerFact]
     public async Task SchemaManager_SecondApply_IsIdempotent()
     {
         var env = new TestHostEnvironment(Path.GetTempPath()) { EnvironmentName = "Development" };
