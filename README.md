@@ -64,6 +64,19 @@ This starts a PostgreSQL 16 container on port `5432` with:
 The application auto-runs any pending schema migrations on startup in Development,
 so no manual `CREATE TABLE` steps are required.
 
+### One-time local configuration
+
+`appsettings.Development.json` is gitignored (it may contain local secrets such as OAuth app credentials).
+Copy the included example file once after a fresh clone:
+
+```bash
+cp backend/PriorityHub.Ui/appsettings.Development.example.json \
+   backend/PriorityHub.Ui/appsettings.Development.json
+```
+
+This activates the Postgres provider with the default docker-compose credentials.
+If you need to point to a different database or add OAuth secrets, edit the file locally.
+
 ### Stop and Wipe Data
 
 ```bash
@@ -90,11 +103,7 @@ overriding the `ConfigStore:Provider` value in your local user secrets or
 
 ## Start The App
 
-1. Start the local database (requires Docker):
-
-```bash
-docker compose up -d
-```
+1. Complete the [Local Database Setup](#local-database-setup) steps if you haven't already (one-time).
 
 2. From repository root, start the app:
 

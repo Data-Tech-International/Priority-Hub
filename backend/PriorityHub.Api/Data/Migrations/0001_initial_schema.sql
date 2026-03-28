@@ -1,10 +1,5 @@
 -- Migration 0001: initial schema
--- Creates the schema_migrations tracking table and the user_config JSONB table.
-
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    version     INTEGER     PRIMARY KEY,
-    applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Creates the user_config JSONB table for per-user provider configuration.
 
 CREATE TABLE IF NOT EXISTS user_config (
     user_id     TEXT        PRIMARY KEY,
