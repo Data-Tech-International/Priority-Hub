@@ -1,0 +1,39 @@
+# Build outputs
+**/bin/
+**/obj/
+
+# Git history
+.git/
+.gitattributes
+.gitignore
+
+# Node
+node_modules/
+dist/
+dist-server/
+coverage/
+
+# Local config and secrets
+.env
+.env.local
+config/providers.local.json
+config/users/
+backend/PriorityHub.Api/appsettings.Development.json
+backend/PriorityHub.Ui/appsettings.Development.json
+
+# Editor and IDE caches
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*.DS_Store
+Thumbs.db
+
+# Test results
+TestResults/
+
+# Docker files (not needed in the image)
+docker-compose.yml
+compose.yaml
+.dockerignore
