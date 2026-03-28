@@ -133,6 +133,35 @@ public sealed class OauthTokenServiceTests
         Assert.Null(authService.LastSignInProperties);
     }
 
+    [Fact]
+    public async Task MicrosoftProvider_WhenPrimaryAzureDevOpsScopeFails_UsesFallbackScope()
+    {
+        var configuration = BuildConfiguration();
+        var httpClient = new HttpClient(new QueueMessageHandler(new Queue<HttpResponseMessage>([
+            JsonResponse("""
+            {
+                "access_token": "graph-new-access",
+                "refresh_token": "graph-new-refresh",
+                "expires_in": 3600
+            }
+            """),
+            ErrorResponse(HttpStatusCode.BadRequest, """{"error":"invalid_scope"}"""),
+            JsonResponse("""{"access_token":"ado-access"}""")
+        ])));
+
+        var tokenService = new OauthTokenService(configuration, NullLogger<OauthTokenService>.Instance, new StaticHttpClientFactory(httpClient));
+        var httpContext = CreateHttpContext(
+            provider: "microsoft",
+            accessToken: "stale-access",
+            refreshToken: "stale-refresh",
+            out _);
+
+        var tokens = await tokenService.GetTokensByProviderAsync(httpContext, CancellationToken.None);
+
+        Assert.Equal("graph-new-access", tokens["microsoft-tasks"]);
+        Assert.Equal("ado-access", tokens["azure-devops"]);
+    }
+
     private static IConfiguration BuildConfiguration() =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {

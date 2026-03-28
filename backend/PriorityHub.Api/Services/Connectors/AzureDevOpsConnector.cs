@@ -2,11 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using PriorityHub.Api.Models;
 
 namespace PriorityHub.Api.Services.Connectors;
 
-public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
+public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDevOpsConnector> logger) : IConnector
 {
     private const int WorkItemBatchSize = 100;
     private static readonly string[] RequestedFields =
@@ -66,6 +67,57 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
 
     public async Task<ConnectorResult> FetchConnectionAsync(AzureDevOpsConnection connection, string? bearerToken, CancellationToken cancellationToken)
     {
+        logger.LogDebug(
+            "ADO [{ConnectionId}] auth inputs: bearerToken={HasBearer}, PAT={HasPat}",
+            connection.Id,
+            !string.IsNullOrWhiteSpace(bearerToken),
+            !string.IsNullOrWhiteSpace(connection.PersonalAccessToken));
+
+        try
+        {
+            var authHeader = BuildAuthorizationHeader(connection, bearerToken);
+            logger.LogDebug(
+                "ADO [{ConnectionId}] using {Scheme} for initial request.",
+                connection.Id, authHeader.Scheme);
+
+            return await FetchConnectionInternalAsync(connection, authHeader, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            var canRetryWithPat =
+                !string.IsNullOrWhiteSpace(bearerToken) &&
+                !string.IsNullOrWhiteSpace(connection.PersonalAccessToken);
+            var isBearerFailure = IsBearerTokenAuthFailure(exception);
+
+            logger.LogWarning(
+                exception,
+                "ADO [{ConnectionId}] initial request failed. canRetryWithPat={CanRetry}, isBearerAuthFailure={IsBearerFailure}",
+                connection.Id, canRetryWithPat, isBearerFailure);
+
+            if (canRetryWithPat && isBearerFailure)
+            {
+                try
+                {
+                    logger.LogDebug("ADO [{ConnectionId}] retrying with PAT fallback.", connection.Id);
+                    var fallbackHeader = BuildPatAuthorizationHeader(connection);
+                    return await FetchConnectionInternalAsync(connection, fallbackHeader, cancellationToken);
+                }
+                catch (Exception fallbackException)
+                {
+                    logger.LogWarning(fallbackException, "ADO [{ConnectionId}] PAT fallback also failed.", connection.Id);
+                    return CreateFailedResult(connection, fallbackException.Message);
+                }
+            }
+
+            return CreateFailedResult(connection, exception.Message);
+        }
+    }
+
+    private async Task<ConnectorResult> FetchConnectionInternalAsync(
+        AzureDevOpsConnection connection,
+        AuthenticationHeaderValue authHeader,
+        CancellationToken cancellationToken)
+    {
         var result = new ConnectorResult();
         var boardConnection = new BoardConnection
         {
@@ -79,70 +131,53 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
             LastSyncMinutesAgo = 0
         };
 
-        try
+        using var wiqlRequest = new HttpRequestMessage(HttpMethod.Post, BuildWiqlUrl(connection))
         {
-            var authHeader = BuildAuthorizationHeader(connection, bearerToken);
-            using var wiqlRequest = new HttpRequestMessage(HttpMethod.Post, BuildWiqlUrl(connection))
-            {
-                Content = JsonContent.Create(new { query = connection.Wiql })
-            };
-            wiqlRequest.Headers.Authorization = authHeader;
+            Content = JsonContent.Create(new { query = connection.Wiql })
+        };
+        wiqlRequest.Headers.Authorization = authHeader;
 
-            using var wiqlResponse = await httpClient.SendAsync(wiqlRequest, cancellationToken);
-            using var wiqlDocument = await ReadJsonResponseAsync(wiqlResponse, "Azure DevOps WIQL request failed", cancellationToken);
-            var ids = wiqlDocument.RootElement.TryGetProperty("workItems", out var workItemsElement)
-                ? workItemsElement.EnumerateArray().Select(item => item.GetProperty("id").GetInt32()).ToArray()
-                : [];
+        using var wiqlResponse = await httpClient.SendAsync(wiqlRequest, cancellationToken);
+        using var wiqlDocument = await ReadJsonResponseAsync(wiqlResponse, "Azure DevOps WIQL request failed", cancellationToken);
+        var ids = wiqlDocument.RootElement.TryGetProperty("workItems", out var workItemsElement)
+            ? workItemsElement.EnumerateArray().Select(item => item.GetProperty("id").GetInt32()).ToArray()
+            : [];
 
-            if (ids.Length == 0)
-            {
-                boardConnection.FetchedItemCount = 0;
-                result.BoardConnections.Add(boardConnection);
-                return result;
-            }
-
-            foreach (var item in await FetchWorkItemsAsync(connection, authHeader, ids, cancellationToken))
-            {
-                var workItemId = item.GetProperty("id").GetInt32();
-                var fields = item.GetProperty("fields");
-                result.WorkItems.Add(new WorkItem
-                {
-                    Id = $"ADO-{workItemId}",
-                    Provider = "azure-devops",
-                    BoardId = connection.Id,
-                    SourceUrl = BuildWorkItemUrl(connection, workItemId),
-                    Title = ReadString(fields, "System.Title") ?? "Untitled work item",
-                    Status = MapStatus(ReadString(fields, "System.State")),
-                    Assignee = ReadNestedString(fields, "System.AssignedTo", "displayName") ?? string.Empty,
-                    Effort = ReadInt(fields, "Microsoft.VSTS.Scheduling.StoryPoints", 3),
-                    Impact = Math.Clamp(11 - ReadInt(fields, "Microsoft.VSTS.Common.Priority", 5), 1, 10),
-                    Urgency = Math.Clamp(11 - ReadInt(fields, "Microsoft.VSTS.Common.Severity", 5), 1, 10),
-                    Confidence = 7,
-                    AgeDays = DaysSince(ReadString(fields, "System.ChangedDate") ?? ReadString(fields, "System.CreatedDate")),
-                    BlockerCount = item.TryGetProperty("relations", out var relationsElement)
-                        ? relationsElement.EnumerateArray().Count(relation => relation.TryGetProperty("rel", out var rel) && rel.GetString()?.Contains("dependency", StringComparison.OrdinalIgnoreCase) == true)
-                        : 0,
-                    DueInDays = DueInDays(ReadString(fields, "Microsoft.VSTS.Scheduling.TargetDate")),
-                    Tags = ParseTags(ReadString(fields, "System.Tags"))
-                });
-            }
-
-            boardConnection.FetchedItemCount = result.WorkItems.Count;
+        if (ids.Length == 0)
+        {
+            boardConnection.FetchedItemCount = 0;
             result.BoardConnections.Add(boardConnection);
+            return result;
         }
-        catch (Exception exception)
+
+        foreach (var item in await FetchWorkItemsAsync(connection, authHeader, ids, cancellationToken))
         {
-            boardConnection.SyncStatus = "needs-auth";
-            boardConnection.LastSyncMinutesAgo = 999;
-            result.BoardConnections.Add(boardConnection);
-            result.Issues.Add(new ProviderIssue
+            var workItemId = item.GetProperty("id").GetInt32();
+            var fields = item.GetProperty("fields");
+            result.WorkItems.Add(new WorkItem
             {
+                Id = $"ADO-{workItemId}",
                 Provider = "azure-devops",
-                ConnectionId = connection.Id,
-                Message = exception.Message
+                BoardId = connection.Id,
+                SourceUrl = BuildWorkItemUrl(connection, workItemId),
+                Title = ReadString(fields, "System.Title") ?? "Untitled work item",
+                Status = MapStatus(ReadString(fields, "System.State")),
+                Assignee = ReadNestedString(fields, "System.AssignedTo", "displayName") ?? string.Empty,
+                Effort = ReadInt(fields, "Microsoft.VSTS.Scheduling.StoryPoints", 3),
+                Impact = Math.Clamp(11 - ReadInt(fields, "Microsoft.VSTS.Common.Priority", 5), 1, 10),
+                Urgency = Math.Clamp(11 - ReadInt(fields, "Microsoft.VSTS.Common.Severity", 5), 1, 10),
+                Confidence = 7,
+                AgeDays = DaysSince(ReadString(fields, "System.ChangedDate") ?? ReadString(fields, "System.CreatedDate")),
+                BlockerCount = item.TryGetProperty("relations", out var relationsElement)
+                    ? relationsElement.EnumerateArray().Count(relation => relation.TryGetProperty("rel", out var rel) && rel.GetString()?.Contains("dependency", StringComparison.OrdinalIgnoreCase) == true)
+                    : 0,
+                DueInDays = DueInDays(ReadString(fields, "Microsoft.VSTS.Scheduling.TargetDate")),
+                Tags = ParseTags(ReadString(fields, "System.Tags"))
             });
         }
 
+        boardConnection.FetchedItemCount = result.WorkItems.Count;
+        result.BoardConnections.Add(boardConnection);
         return result;
     }
 
@@ -207,6 +242,53 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
         }
 
         throw new InvalidOperationException("Azure DevOps authentication required. Sign in with Microsoft to grant access, or add a Personal Access Token for this connection.");
+    }
+
+    private static AuthenticationHeaderValue BuildPatAuthorizationHeader(AzureDevOpsConnection connection)
+    {
+        var encodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($":{connection.PersonalAccessToken}"));
+        return new AuthenticationHeaderValue("Basic", encodedToken);
+    }
+
+    private static bool IsBearerTokenAuthFailure(Exception exception)
+    {
+        var message = exception.Message;
+
+        // A 404 means the org/project URL is wrong, not an auth failure.
+        if (message.Contains("returned 404", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return message.Contains("returned HTML instead of JSON", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("sign-in token is not valid", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("TF400813", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ConnectorResult CreateFailedResult(AzureDevOpsConnection connection, string message)
+    {
+        var boardConnection = new BoardConnection
+        {
+            Id = connection.Id,
+            Provider = "azure-devops",
+            WorkspaceName = connection.Organization,
+            BoardName = connection.Name,
+            ProjectName = connection.Project,
+            Owner = string.Empty,
+            SyncStatus = "needs-auth",
+            LastSyncMinutesAgo = 999
+        };
+
+        var result = new ConnectorResult();
+        result.BoardConnections.Add(boardConnection);
+        result.Issues.Add(new ProviderIssue
+        {
+            Provider = "azure-devops",
+            ConnectionId = connection.Id,
+            Message = message
+        });
+        return result;
     }
 
     internal static string MapStatus(string? value)
@@ -295,7 +377,17 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient) : IConnector
         var trimmed = (body ?? string.Empty).TrimStart();
         if (trimmed.StartsWith("<", StringComparison.Ordinal))
         {
-            return $"{prefix}: Azure DevOps returned HTML instead of JSON. The sign-in token is not valid for Azure DevOps. Re-sign in with Microsoft to refresh access, or add a Personal Access Token for this connection.";
+            if (statusCode == HttpStatusCode.NotFound)
+            {
+                return $"{prefix}: Azure DevOps returned 404 Not Found. Verify the organization and project names are correct (URL: dev.azure.com/{{organization}}/{{project}}).";
+            }
+
+            if (statusCode == HttpStatusCode.Unauthorized || statusCode == HttpStatusCode.Forbidden)
+            {
+                return $"{prefix}: Azure DevOps returned {(int)statusCode}. The sign-in token is not valid for Azure DevOps. Re-sign in with Microsoft to refresh access, or add a Personal Access Token for this connection.";
+            }
+
+            return $"{prefix}: Azure DevOps returned HTML instead of JSON (HTTP {(int)statusCode}). The sign-in token may not be valid for Azure DevOps. Re-sign in with Microsoft to refresh access, or add a Personal Access Token for this connection.";
         }
 
         var snippet = string.IsNullOrWhiteSpace(body)
