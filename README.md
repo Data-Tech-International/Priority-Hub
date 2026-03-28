@@ -1,5 +1,8 @@
 # Priority Hub
 
+[![CI](https://github.com/Data-Tech-International/Priority-Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Data-Tech-International/Priority-Hub/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Priority Hub is a Blazor Server application with an ASP.NET Core 10 backend-for-frontend (BFF) that unifies personal work items from Azure DevOps, Jira, and Trello.
 
 ## Overview
@@ -189,3 +192,21 @@ No data in dashboard:
 Missing local config:
 
 - If `config/providers.local.json` does not exist or is empty, the app still starts and returns an empty dashboard payload so configuration can be completed in the UI.
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on
+reporting bugs, requesting features, setting up your development environment, coding standards,
+and the pull request process.
+
+For major changes, follow the [specification-first workflow](CONTRIBUTING.md#specification-first-workflow-major-changes)
+before starting implementation.
+
+## Security
+
+If you discover a security vulnerability, please **do not** open a public issue.
+Report it privately following the process described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Priority Hub is released under the [MIT License](LICENSE).

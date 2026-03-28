@@ -8,6 +8,16 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `CONTRIBUTING.md` at repo root covering contributor guide, development setup, coding standards, commit conventions, and PR checklist.
+- `CODE_OF_CONDUCT.md` at repo root with Contributor Covenant v2.1.
+- `SECURITY.md` at repo root with responsible disclosure policy, scope, reporting method, and response timeline.
+- `.github/ISSUE_TEMPLATE/bug_report.yml` — bug report template with auto-label `bug`.
+- `.github/ISSUE_TEMPLATE/feature_request.yml` — feature request template with auto-label `enhancement`.
+- `.github/ISSUE_TEMPLATE/config.yml` — template chooser listing all issue templates.
+- `package.json` open-source metadata: `description`, `author`, `license`, `keywords`, `repository`, `bugs`, `homepage` fields; `private: true` removed.
+- CI status badge and MIT license badge in `README.md`.
+- Contributing, License, and Security sections in `README.md`.
+- Contributing section in `docs/processes/README.md` linking to `CONTRIBUTING.md`.
 - `backend/Directory.Build.props` for centralized .NET version alignment with `package.json`.
 - `CHANGELOG.md` in Keep a Changelog format.
 - `docs/` markdown skeleton covering features, configuration, processes, and troubleshooting.

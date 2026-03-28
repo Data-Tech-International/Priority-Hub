@@ -1,0 +1,73 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in Priority Hub.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill in as much detail as possible so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Go to ...
+        2. Click on ...
+        3. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: Describe the expected outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+      placeholder: Describe the actual outcome, including any error messages.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment.
+      placeholder: |
+        - OS: (e.g., Windows 11, Ubuntu 24.04, macOS 15)
+        - .NET SDK version: (e.g., 10.0.x)
+        - Browser (if UI issue): (e.g., Chrome 124)
+        - Priority Hub version: (e.g., 0.2.0 or commit SHA)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs
+      description: |
+        Paste relevant log output, error messages, or attach screenshots.
+        **Do not include credentials, PATs, or API tokens.**
+      placeholder: Paste logs or drag-and-drop screenshots here.
+    validations:
+      required: false
