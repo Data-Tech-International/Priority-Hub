@@ -3,7 +3,7 @@ using PriorityHub.Api.Models;
 
 namespace PriorityHub.Api.Services;
 
-public sealed class LocalConfigStore(IHostEnvironment environment)
+public sealed class LocalConfigStore(IHostEnvironment environment) : IConfigStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
