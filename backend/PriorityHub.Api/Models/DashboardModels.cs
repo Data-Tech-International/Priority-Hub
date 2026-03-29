@@ -40,6 +40,7 @@ public sealed class BoardConnection
 {
     public string Id { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
+    public string Emoji { get; set; } = string.Empty;
     public string WorkspaceName { get; set; } = string.Empty;
     public string BoardName { get; set; } = string.Empty;
     public string ProjectName { get; set; } = string.Empty;

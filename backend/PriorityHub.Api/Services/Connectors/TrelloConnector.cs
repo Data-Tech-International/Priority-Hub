@@ -9,6 +9,7 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
     public string ProviderKey => "trello";
     public string DisplayName => "Trello";
     public string Description => "Aggregate cards from a Trello board.";
+    public string DefaultEmoji => "📌";
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -46,6 +47,7 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
         {
             Id = connection.Id,
             Provider = "trello",
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
             WorkspaceName = "Trello",
             BoardName = connection.Name,
             ProjectName = connection.BoardId,

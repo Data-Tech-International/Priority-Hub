@@ -11,6 +11,7 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
     public string ProviderKey => "jira";
     public string DisplayName => "Jira";
     public string Description => "Aggregate issues from a Jira project using JQL.";
+    public string DefaultEmoji => "📋";
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -50,6 +51,7 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
         {
             Id = connection.Id,
             Provider = "jira",
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
             WorkspaceName = string.Empty,
             BoardName = connection.Name,
             ProjectName = string.Empty,
