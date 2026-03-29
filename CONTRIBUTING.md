@@ -38,14 +38,11 @@ By contributing, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md)
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Node.js 20+](https://nodejs.org/) and npm
 
 Verify your environment:
 
 ```bash
 dotnet --version   # should print 10.x.x
-node --version     # should print v20.x.x or higher
-npm --version
 ```
 
 ### Clone and Build
@@ -65,8 +62,6 @@ dotnet test PriorityHub.sln
 ### Start the App (hot reload)
 
 ```bash
-npm run dev
-# or directly:
 dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
 ```
 

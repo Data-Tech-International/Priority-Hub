@@ -19,15 +19,13 @@
 
 ## Code Standards
 - [ ] Code follows project conventions
-- [ ] ESLint checks pass (`npm run lint`)
-- [ ] No `console.log()` left in code (only `console.error()` and `console.warn()` allowed)
+- [ ] `dotnet format PriorityHub.sln --verify-no-changes` passes
 - [ ] Comments added for complex logic
 - [ ] No secrets or API keys accidentally included
 
 ## Frontend (if applicable)
 - [ ] Components properly documented
-- [ ] Props validation in place
-- [ ] React hooks used correctly
+- [ ] Parameters validation in place
 - [ ] Accessibility considered
 
 ## Backend (if applicable)
@@ -39,14 +37,13 @@
 
 ## Coverage
 - [ ] Test coverage maintained or improved
-- [ ] Coverage meets 60% threshold (`npm run test:coverage`)
-- [ ] Critical paths have 80%+ coverage
+- [ ] Critical paths have adequate coverage
 
 ## Security
 - [ ] No hardcoded secrets
 - [ ] No SQL injection vulnerabilities
 - [ ] Input validation applied
-- [ ] Dependencies checked for vulnerabilities (`npm audit`, `dotnet list package --vulnerable`)
+- [ ] Dependencies checked for vulnerabilities (`dotnet list package --vulnerable`)
 
 ## Performance
 - [ ] No obvious performance regressions

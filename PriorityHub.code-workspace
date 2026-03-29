@@ -6,15 +6,16 @@
 	],
 	"settings": {		
 		"chat.tools.terminal.autoApprove": {
-			"npm.cmd": true,
 			"dotnet test": true,
 			"dotnet build": true,
-			"npx.cmd": true,
 			"git remote": true,
 			"git switch": true,
 			".github/ISSUE_TEMPLATE/specification.yml": true,
 			"Copy-Item": true,
-			"git checkout": true
+			"git checkout": true,
+			"git fetch": true,
+			"git pull": true,
+			"Test-Path": true
 		}
 	}
 }

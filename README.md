@@ -28,15 +28,12 @@ The Blazor Server UI and ASP.NET Core services run in the same host process.
 ## Prerequisites
 
 - .NET 10 SDK
-- Node.js 20+ and npm (used for repository script wrappers)
 - Docker (for the local PostgreSQL container)
 
 Verify your environment:
 
 ```bash
 dotnet --version
-node --version
-npm --version
 docker --version
 ```
 
@@ -106,12 +103,6 @@ overriding the `ConfigStore:Provider` value in your local user secrets or
 1. Complete the [Local Database Setup](#local-database-setup) steps if you haven't already (one-time).
 
 2. From repository root, start the app:
-
-```bash
-npm run dev
-```
-
-3. Alternative direct command:
 
 ```bash
 dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
@@ -284,17 +275,12 @@ Run from repository root.
 Build:
 
 ```bash
-npm run build
 dotnet build PriorityHub.sln
 ```
 
 Test:
 
 ```bash
-npm run test
-npm run test:api
-npm run test:ui
-
 dotnet test PriorityHub.sln
 dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 dotnet test backend/PriorityHub.Ui.Tests/PriorityHub.Ui.Tests.csproj
@@ -384,8 +370,8 @@ Build or SDK mismatch:
 
 Script command failures:
 
-- Confirm Node.js 20+ and npm are installed.
-- Use direct dotnet commands if npm wrappers fail.
+- Confirm .NET 10 SDK is installed.
+- Re-run `dotnet --version`.
 
 No data in dashboard:
 
