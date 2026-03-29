@@ -130,6 +130,47 @@ builder.Services
         };
     })
     .AddOAuth(GitHubScheme, options =>
+    // --- Additional providers (scaffold) ---
+    .AddOAuth("Jira", options =>
+    {
+        // TODO: Configure Jira OAuth endpoints and options
+        options.ClientId = builder.Configuration["Authentication:Jira:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Jira:ClientSecret"] ?? "";
+        options.CallbackPath = "/api/auth/callback/jira";
+        // ...
+    })
+    .AddOAuth("Yandex", options =>
+    {
+        // TODO: Configure Yandex OAuth endpoints and options
+        options.ClientId = builder.Configuration["Authentication:Yandex:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Yandex:ClientSecret"] ?? "";
+        options.CallbackPath = "/api/auth/callback/yandex";
+        // ...
+    })
+    .AddOAuth("Trello", options =>
+    {
+        // TODO: Configure Trello OAuth endpoints and options
+        options.ClientId = builder.Configuration["Authentication:Trello:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Trello:ClientSecret"] ?? "";
+        options.CallbackPath = "/api/auth/callback/trello";
+        // ...
+    })
+    .AddOAuth("Google", options =>
+    {
+        // TODO: Configure Google OAuth endpoints and options
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        options.CallbackPath = "/api/auth/callback/google";
+        // ...
+    })
+    .AddOAuth("Facebook", options =>
+    {
+        // TODO: Configure Facebook OAuth endpoints and options
+        options.ClientId = builder.Configuration["Authentication:Facebook:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Facebook:ClientSecret"] ?? "";
+        options.CallbackPath = "/api/auth/callback/facebook";
+        // ...
+    })
     {
         var section = builder.Configuration.GetSection("Authentication:GitHub");
         options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-github-client" : section["ClientId"]!;

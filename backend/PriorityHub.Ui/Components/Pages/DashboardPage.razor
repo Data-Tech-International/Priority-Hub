@@ -119,7 +119,7 @@
                 <div class="panel-header">
                     <div>
                         <h2>Unified work queue</h2>
-                        <p>Drag cards to keep one manual order across all connected sources.</p>
+                        <!-- Removed drag cards text as per requirements -->
                     </div>
                     <span class="queue-hint">@(_savingOrder ? "Saving order…" : "Drag and drop to reorder")</span>
                 </div>
@@ -339,14 +339,14 @@
                             }
 
                             <div class="tag-row">
-                                @if (item.Item.Tags.Count == 0)
+                                @if (item.Item.Tags.Count > 0)
                                 {
-                                    <span class="tag-chip tag-chip-empty">No tags</span>
+                                    @foreach (var tag in item.Item.Tags)
+                                    {
+                                        <span class="tag-chip">@tag</span>
+                                    }
                                 }
-                                @foreach (var tag in item.Item.Tags)
-                                {
-                                    <span class="tag-chip">@tag</span>
-                                }
+                                <!-- If no tags, render nothing -->
                             </div>
                         </article>
                     }
