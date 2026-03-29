@@ -44,7 +44,7 @@ public sealed class WorkItemRanker
             var band = score >= 82 ? "critical" : score >= 60 ? "focus" : "maintain";
             var order = orderIndex.TryGetValue(item.Id, out var idx) ? idx : int.MaxValue;
 
-            enriched.Add(new RankedWorkItem(item, score, band, board.BoardName, board.ProjectName, order));
+            enriched.Add(new RankedWorkItem(item, score, band, board.BoardName, board.ProjectName, board.Emoji, order));
         }
 
         var newItems = enriched
@@ -86,6 +86,17 @@ public sealed class WorkItemRanker
         _ => provider
     };
 
+    public static string GetProviderEmoji(string provider) => provider switch
+    {
+        "azure-devops" => "🔷",
+        "github" => "🐙",
+        "jira" => "📋",
+        "trello" => "📌",
+        "microsoft-tasks" => "✅",
+        "outlook-flagged-mail" => "📧",
+        _ => "🔗"
+    };
+
     public static string FormatPriorityBand(string band) => band switch
     {
         "critical" => "Critical now",
@@ -124,4 +135,5 @@ public sealed record RankedWorkItem(
     string Band,
     string BoardName,
     string ProjectName,
+    string Emoji,
     int OrderIndex);

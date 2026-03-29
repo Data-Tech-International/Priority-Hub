@@ -1,0 +1,100 @@
+@implements IDisposable
+@inject IJSRuntime JS
+
+<div class="emoji-picker" @ref="_containerRef">
+    <button type="button"
+            class="emoji-trigger"
+            title="Choose emoji"
+            aria-label="Choose emoji"
+            @onclick="ToggleOpen">
+        <span class="emoji-trigger-icon">@Value</span>
+    </button>
+
+    @if (_open)
+    {
+        <div class="emoji-popup" role="dialog" aria-label="Emoji picker">
+            <input @bind="_search"
+                   @bind:event="oninput"
+                   placeholder="Search emoji…"
+                   class="emoji-search"
+                   aria-label="Search emoji" />
+
+            @{
+                var filtered = EmojiData.Search(_search);
+            }
+
+            @if (filtered.Count == 0)
+            {
+                <p class="emoji-empty">No results for "@_search"</p>
+            }
+            else
+            {
+                @foreach (var category in filtered)
+                {
+                    <div class="emoji-category">
+                        <span class="emoji-category-label">@category.Name</span>
+                        <div class="emoji-grid">
+                            @foreach (var entry in category.Emojis)
+                            {
+                                <button type="button"
+                                        class="emoji-btn@(entry.Emoji == Value ? " is-selected" : "")"
+                                        title="@entry.Name"
+                                        aria-label="@entry.Name"
+                                        @onclick="() => Select(entry.Emoji)">
+                                    @entry.Emoji
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The currently selected emoji character.</summary>
+    [Parameter, EditorRequired] public string Value { get; set; } = "🔷";
+
+    /// <summary>Raised when the user selects a new emoji.</summary>
+    [Parameter] public EventCallback<string> OnEmojiSelected { get; set; }
+
+    private bool _open;
+    private string _search = string.Empty;
+    private ElementReference _containerRef;
+    private DotNetObjectReference<EmojiPicker>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("PriorityHub.registerOutsideClick", _containerRef, _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnOutsideClick()
+    {
+        _open = false;
+        StateHasChanged();
+    }
+
+    private void ToggleOpen()
+    {
+        _open = !_open;
+        if (!_open) _search = string.Empty;
+    }
+
+    private async Task Select(string emoji)
+    {
+        _open = false;
+        _search = string.Empty;
+        await OnEmojiSelected.InvokeAsync(emoji);
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+}

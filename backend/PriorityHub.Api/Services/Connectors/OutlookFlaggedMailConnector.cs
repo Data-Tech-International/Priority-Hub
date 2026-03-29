@@ -12,6 +12,7 @@ public sealed class OutlookFlaggedMailConnector(HttpClient httpClient) : IConnec
     public string ProviderKey => "outlook-flagged-mail";
     public string DisplayName => "Outlook Flagged Mail";
     public string Description => "Aggregate flagged Outlook email from Microsoft Graph.";
+    public string DefaultEmoji => "📧";
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -34,6 +35,7 @@ public sealed class OutlookFlaggedMailConnector(HttpClient httpClient) : IConnec
         {
             Id = connection.Id,
             Provider = ProviderKey,
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
             WorkspaceName = "Microsoft 365",
             BoardName = string.IsNullOrWhiteSpace(connection.Name) ? "Flagged Mail" : connection.Name,
             ProjectName = string.IsNullOrWhiteSpace(connection.FolderId) ? "All mail folders" : connection.FolderId,

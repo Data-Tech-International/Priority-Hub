@@ -8,6 +8,23 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Connector instance emoji**: each connector connection now has a user-selectable emoji field (`emoji` in JSON config)
+- **Default emojis per connector type**: 🔷 Azure DevOps, 🐙 GitHub, 📋 Jira, 📌 Trello, ✅ Microsoft Tasks, 📧 Outlook Flagged Mail
+- **`EmojiPicker` Blazor component**: pure C#/Blazor emoji picker with categorised groups, keyword search, and selected-state highlight
+- **`EmojiData` service**: curated emoji dataset (7 categories, keyword search, single-emoji validation via `StringInfo`)
+- **`DefaultEmoji` on `IConnector`**: each connector declares its type-level default emoji
+- **`Emoji` on `BoardConnection` model**: carried through from connector config to dashboard payload
+- **`Emoji` on `RankedWorkItem`**: propagated from `BoardConnection` for use in UI
+- **`WorkItemRanker.GetProviderEmoji`**: static helper returning default emoji for a provider key
+- Emoji displayed at 24 px before work item title on dashboard cards
+- Emoji displayed before board name on connector status cards in dashboard
+- Emoji displayed before connector name in Connectors filter dropdown
+- Emoji picker displayed in connection editor cards on the Settings page
+- Emoji displayed in provider section headers on the Settings page
+- Legacy config without an `emoji` field falls back to the connector type's default (no errors)
+- Emoji field validation rejects strings with more than one grapheme cluster
+
+### Added
 - `TargetDate` (`DateTimeOffset?`) and `IsBlocked` (`bool`) fields to `WorkItem` model
 - Azure DevOps: `TargetDate` from `Microsoft.VSTS.Scheduling.TargetDate`; `IsBlocked` from blocked state
 - Jira: `TargetDate` from `fields.duedate`; `IsBlocked` from blocked status

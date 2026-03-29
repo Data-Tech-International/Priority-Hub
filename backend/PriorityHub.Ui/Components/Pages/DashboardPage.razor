@@ -219,7 +219,7 @@
                             {
                                 <article class="connector-card">
                                     <div class="connector-topline">
-                                        <strong>@board.BoardName</strong>
+                                        <strong><span class="connector-emoji">@board.Emoji</span>@board.BoardName</strong>
                                         <span class="sync-pill sync-@board.SyncStatus">@board.SyncStatus</span>
                                     </div>
                                     <p>@WorkItemRanker.FormatProviderName(board.Provider) · @board.ProjectName</p>
@@ -272,7 +272,13 @@
                                  @ondrop="() => HandleDropItem(item.Item.Id)">
                             <div class="work-item-heading">
                                 <div class="work-item-title">
-                                    <h3>@item.Item.Title</h3>
+                                    <h3>
+                                        @if (!string.IsNullOrWhiteSpace(item.Emoji))
+                                        {
+                                            <span class="work-item-emoji" aria-hidden="true">@item.Emoji</span>
+                                        }
+                                        @item.Item.Title
+                                    </h3>
                                     @if (item.Item.IsNew)
                                     {
                                         <span class="new-pill">New item</span>

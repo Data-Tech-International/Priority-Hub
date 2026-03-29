@@ -66,6 +66,7 @@ public sealed class ConnectorRegistryTests
         public string ProviderKey => key;
         public string DisplayName => display;
         public string Description => "Stub";
+        public string DefaultEmoji => "🔷";
         public ConnectorFieldSpec[] ConfigFields => [];
 
         public Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken) =>
