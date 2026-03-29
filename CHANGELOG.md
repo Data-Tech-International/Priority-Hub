@@ -8,6 +8,7 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Footer with app version, feedback link, copyright, and license information
 - **Connector instance emoji**: each connector connection now has a user-selectable emoji field (`emoji` in JSON config)
 - **Default emojis per connector type**: 🔷 Azure DevOps, 🐙 GitHub, 📋 Jira, 📌 Trello, ✅ Microsoft Tasks, 📧 Outlook Flagged Mail
 - **`EmojiPicker` Blazor component**: pure C#/Blazor emoji picker with categorised groups, keyword search, and selected-state highlight
