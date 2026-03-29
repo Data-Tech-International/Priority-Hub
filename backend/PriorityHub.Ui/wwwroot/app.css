@@ -1386,3 +1386,59 @@ textarea {
   color: #0a8fdc;
   font-weight: 600;
 }
+
+/* ===================================================
+   Blocked + Target Date styles
+   =================================================== */
+
+.work-item-card.is-blocked {
+    background-color: color-mix(in srgb, var(--color-terracotta, #c0543c) 8%, var(--surface-2, #fff));
+    border-left: 3px solid var(--color-terracotta, #c0543c);
+}
+
+.target-date-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.25rem 0;
+}
+
+.blocked-pill {
+    display: inline-block;
+    padding: 0.1em 0.55em;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #c0543c;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.target-date-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #666);
+}
+
+.days-left-badge {
+    display: inline-block;
+    padding: 0.1em 0.55em;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.days-left-overdue {
+    background-color: #c0543c;
+    color: #fff;
+}
+
+.days-left-soon {
+    background-color: #d4860a;
+    color: #fff;
+}
+
+.days-left-ok {
+    background-color: color-mix(in srgb, currentColor 12%, transparent);
+    color: inherit;
+}

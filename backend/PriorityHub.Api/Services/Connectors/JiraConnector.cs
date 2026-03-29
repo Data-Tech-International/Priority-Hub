@@ -110,6 +110,8 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
                     AgeDays = DaysSince(ReadString(fields, "updated") ?? ReadString(fields, "created")),
                     BlockerCount = fields.TryGetProperty("issuelinks", out var linksElement) && linksElement.ValueKind == JsonValueKind.Array ? linksElement.GetArrayLength() : 0,
                     DueInDays = DueInDays(ReadString(fields, "duedate")),
+                    TargetDate = ParseTargetDate(ReadString(fields, "duedate")),
+                    IsBlocked = MapStatus(fields.GetProperty("status").GetProperty("name").GetString()) == "blocked",
                     Tags = fields.TryGetProperty("labels", out var labelsElement) && labelsElement.ValueKind == JsonValueKind.Array
                         ? labelsElement.EnumerateArray().Select(label => label.GetString()).Where(value => !string.IsNullOrWhiteSpace(value)).Cast<string>().ToList()
                         : []
@@ -170,5 +172,10 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
     {
         if (!DateTimeOffset.TryParse(value, out var parsed)) return null;
         return (int)Math.Round((parsed - DateTimeOffset.UtcNow).TotalDays);
+    }
+
+    internal static DateTimeOffset? ParseTargetDate(string? value)
+    {
+        return DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
     }
 }

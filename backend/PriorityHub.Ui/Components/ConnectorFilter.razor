@@ -1,0 +1,171 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="tag-filter connector-filter" @ref="_containerRef">
+    <span class="tag-filter-label">Connectors</span>
+    <button type="button"
+            class="tag-filter-toggle@(_open ? " is-open" : "")"
+            aria-haspopup="listbox"
+            aria-expanded="@(_open ? "true" : "false")"
+            id="connector-filter-btn"
+            @onclick="() => _open = !_open"
+            @onkeydown="HandleToggleKeyDown">
+        @Label
+    </button>
+    @if (_open)
+    {
+        <div class="tag-filter-dropdown"
+             role="listbox"
+             aria-multiselectable="true"
+             aria-labelledby="connector-filter-btn"
+             tabindex="-1"
+             @ref="_dropdownRef"
+             @onkeydown="HandleKeyDown">
+            @if (SelectedConnectors.Count > 0)
+            {
+                <button type="button" class="tag-filter-clear" @onclick="ClearSelection">
+                    Clear selection
+                </button>
+            }
+            @if (AvailableConnectors.Count == 0)
+            {
+                <p class="tag-filter-empty">No connectors in current data.</p>
+            }
+            else
+            {
+                @foreach (var connector in AvailableConnectors)
+                {
+                    <label class="tag-filter-option"
+                           role="option"
+                           aria-selected="@SelectedConnectors.Contains(connector)"
+                           tabindex="0"
+                           @onkeydown="e => HandleOptionKeyDown(e, connector)">
+                        <input type="checkbox"
+                               checked="@SelectedConnectors.Contains(connector)"
+                               @onchange="() => ToggleConnector(connector)" />
+                        <span>@WorkItemRanker.FormatProviderName(connector)</span>
+                    </label>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> AvailableConnectors { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<string> SelectedConnectors { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> OnConnectorsChange { get; set; }
+
+    private bool _open;
+    private ElementReference _containerRef;
+    private ElementReference _dropdownRef;
+    private DotNetObjectReference<ConnectorFilter>? _dotNetRef;
+    private int _focusedIndex = -1;
+    private int? _pendingFocusIndex;
+
+    private string Label => SelectedConnectors.Count == 0
+        ? "All connectors"
+        : SelectedConnectors.Count == 1
+            ? WorkItemRanker.FormatProviderName(SelectedConnectors[0])
+            : $"Connectors ({SelectedConnectors.Count})";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("PriorityHub.registerOutsideClick", _containerRef, _dotNetRef);
+        }
+
+        if (_pendingFocusIndex.HasValue && _open)
+        {
+            var indexToFocus = _pendingFocusIndex.Value;
+            _pendingFocusIndex = null;
+            await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, indexToFocus);
+        }
+    }
+
+    [JSInvokable]
+    public void OnOutsideClick()
+    {
+        _open = false;
+        StateHasChanged();
+    }
+
+    private void HandleToggleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+            case " ":
+            case "ArrowDown":
+                _open = true;
+                _focusedIndex = 0;
+                _pendingFocusIndex = 0;
+                StateHasChanged();
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _focusedIndex = AvailableConnectors.Count == 0
+                    ? -1
+                    : (_focusedIndex + 1) % AvailableConnectors.Count;
+                await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, _focusedIndex);
+                break;
+            case "ArrowUp":
+                _focusedIndex = AvailableConnectors.Count == 0
+                    ? -1
+                    : (_focusedIndex - 1 + AvailableConnectors.Count) % AvailableConnectors.Count;
+                await JS.InvokeVoidAsync("PriorityHub.focusNthOption", _dropdownRef, _focusedIndex);
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task HandleOptionKeyDown(KeyboardEventArgs e, string connector)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+                await ToggleConnector(connector);
+                break;
+            case "Escape":
+                _open = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task ToggleConnector(string connector)
+    {
+        var next = new List<string>(SelectedConnectors);
+        if (next.Contains(connector))
+            next.Remove(connector);
+        else
+            next.Add(connector);
+        await OnConnectorsChange.InvokeAsync(next);
+    }
+
+    private async Task ClearSelection()
+    {
+        _open = false;
+        await OnConnectorsChange.InvokeAsync([]);
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+}

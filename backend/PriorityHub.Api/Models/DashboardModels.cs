@@ -66,6 +66,8 @@ public sealed class WorkItem
     public int BlockerCount { get; set; }
     public int? DueInDays { get; set; }
     public bool IsNew { get; set; }
+    public DateTimeOffset? TargetDate { get; set; }
+    public bool IsBlocked { get; set; }
     public List<string> Tags { get; set; } = [];
 }
 

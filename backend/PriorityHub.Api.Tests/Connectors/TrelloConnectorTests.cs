@@ -50,4 +50,38 @@ public sealed class TrelloConnectorTests
     {
         Assert.Equal(0, TrelloConnector.DaysSince("not-a-date"));
     }
+
+    // ── TargetDate ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ParseTargetDate_ValidDate_ReturnsDateTimeOffset()
+    {
+        var date = DateTimeOffset.UtcNow.AddDays(3).ToString("O");
+        var result = TrelloConnector.ParseTargetDate(date);
+        Assert.NotNull(result);
+        Assert.True(result.Value > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public void ParseTargetDate_NullOrInvalid_ReturnsNull()
+    {
+        Assert.Null(TrelloConnector.ParseTargetDate(null));
+        Assert.Null(TrelloConnector.ParseTargetDate("not-a-date"));
+    }
+
+    // ── IsBlocked ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IsBlocked_WhenBlockedLabelPresent_ReturnsTrue()
+    {
+        var labels = new List<string> { "urgent", "blocked" };
+        Assert.Contains("blocked", labels, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void IsBlocked_WhenNoBlockedLabel_ReturnsFalse()
+    {
+        var labels = new List<string> { "urgent", "feature" };
+        Assert.DoesNotContain("blocked", labels, StringComparer.OrdinalIgnoreCase);
+    }
 }

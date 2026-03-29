@@ -172,6 +172,8 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
                     ? relationsElement.EnumerateArray().Count(relation => relation.TryGetProperty("rel", out var rel) && rel.GetString()?.Contains("dependency", StringComparison.OrdinalIgnoreCase) == true)
                     : 0,
                 DueInDays = DueInDays(ReadString(fields, "Microsoft.VSTS.Scheduling.TargetDate")),
+                TargetDate = ParseTargetDate(ReadString(fields, "Microsoft.VSTS.Scheduling.TargetDate")),
+                IsBlocked = MapStatus(ReadString(fields, "System.State")) == "blocked",
                 Tags = ParseTags(ReadString(fields, "System.Tags"))
             });
         }
@@ -405,4 +407,9 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
     internal static List<string> ParseTags(string? value) => string.IsNullOrWhiteSpace(value)
         ? []
         : value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private static DateTimeOffset? ParseTargetDate(string? value)
+    {
+        return DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
+    }
 }
