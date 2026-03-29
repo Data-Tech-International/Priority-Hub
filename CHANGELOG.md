@@ -8,6 +8,8 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Login authentication providers**: Jira, Yandex, Trello, Google, and Facebook added as OAuth sign-in options on the login page
+- **Provider icons on login page**: each authentication provider button now displays an inline SVG icon next to the provider name
 - **Settings tab icons**: each tab (Connectors, Account, Export, Security) now shows an emoji icon
 - **Settings tab keyboard navigation**: arrow keys (←/→), Home, and End move focus between tabs; matches WAI-ARIA tab pattern
 - **Collapsible connector sections**: provider sections are collapsed by default; clicking the header expands/collapses and shows a connection-count summary in the collapsed state
@@ -19,11 +21,17 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **Dismissible status messages**: the status banner now includes a dismiss (✕) button
 
 ### Changed
+- **Dashboard connector filter**: now filters by connector instance (connection ID and board name) instead of provider type
+- **Dashboard panel header**: removed the "Drag cards to keep one manual order across all connected sources." instructional text
+- **Dashboard work item cards**: untagged items no longer show a "No tags" pill; the tag row is rendered empty instead
 - Status banner uses distinct error (red) vs. info (blue) styling based on outcome
 - "Add connection" button moved inside each expanded connector section (below the connection list)
 - Settings tab buttons use ARIA roles (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`)
 - Tab panel containers use `role="tabpanel"` with matching `aria-labelledby`
 - Validation error `<small>` elements include `role="alert"` for screen-reader announcement
+
+### Fixed
+- **Login page heading border**: removed visible border on the "Sign in to access your unified priority dashboard." heading
 
 - Footer with app version, feedback link, copyright, and license information
 - **Connector instance emoji**: each connector connection now has a user-selectable emoji field (`emoji` in JSON config)

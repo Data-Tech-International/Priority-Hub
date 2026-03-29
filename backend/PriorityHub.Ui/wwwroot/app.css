@@ -96,8 +96,10 @@ textarea {
   backdrop-filter: blur(18px);
 }
 
-.login-card h1 {
+.login-card h1,
+.login-heading {
   margin: 0;
+  border: 0;
   font-size: clamp(2.3rem, 4vw, 4rem);
   line-height: 0.96;
   max-width: 12ch;
@@ -121,6 +123,7 @@ textarea {
   display: inline-flex;
   justify-content: center;
   align-items: center;
+  gap: 10px;
   min-height: 54px;
   padding: 0 18px;
   border-radius: 999px;
@@ -129,12 +132,38 @@ textarea {
   font-weight: 600;
 }
 
+.provider-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .login-provider-button.microsoft {
   background: linear-gradient(90deg, #0f6cbd, #0a8fdc);
 }
 
 .login-provider-button.github {
   background: linear-gradient(90deg, #24292f, #57606a);
+}
+
+.login-provider-button.google {
+  background: linear-gradient(90deg, #4285F4, #357AE8);
+}
+
+.login-provider-button.facebook {
+  background: linear-gradient(90deg, #1877F2, #0d6edb);
+}
+
+.login-provider-button.jira {
+  background: linear-gradient(90deg, #0052CC, #0065FF);
+}
+
+.login-provider-button.trello {
+  background: linear-gradient(90deg, #0079BF, #0092d1);
+}
+
+.login-provider-button.yandex {
+  background: linear-gradient(90deg, #FC3F1D, #e83612);
 }
 
 .dashboard {

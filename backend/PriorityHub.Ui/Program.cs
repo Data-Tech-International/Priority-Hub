@@ -16,6 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 const string MicrosoftScheme = "Microsoft";
 const string GitHubScheme = "GitHub";
+const string GoogleScheme = "Google";
+const string FacebookScheme = "Facebook";
+const string JiraScheme = "Jira";
+const string TrelloScheme = "Trello";
+const string YandexScheme = "Yandex";
+const string FacebookApiVersion = "v18.0";
+const string TrelloApiVersion = "1";
 
 // ── Blazor Server ──
 builder.Services.AddRazorComponents()
@@ -186,6 +193,167 @@ builder.Services
                 context.Identity?.AddClaim(new Claim("provider", "github"));
             }
         };
+    })
+    .AddOAuth(GoogleScheme, options =>
+    {
+        var section = builder.Configuration.GetSection("Authentication:Google");
+        options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-google-client" : section["ClientId"]!;
+        options.ClientSecret = string.IsNullOrWhiteSpace(section["ClientSecret"]) ? "disabled-google-secret" : section["ClientSecret"]!;
+        options.CallbackPath = "/api/auth/callback/google";
+        options.AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+        options.TokenEndpoint = "https://oauth2.googleapis.com/token";
+        options.UserInformationEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo";
+        options.SaveTokens = true;
+        options.UsePkce = true;
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+        options.ClaimActions.MapJsonKey("picture", "picture");
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+                context.RunClaimActions(document.RootElement);
+                context.Identity?.AddClaim(new Claim("provider", "google"));
+            }
+        };
+    })
+    .AddOAuth(FacebookScheme, options =>
+    {
+        var section = builder.Configuration.GetSection("Authentication:Facebook");
+        options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-facebook-client" : section["ClientId"]!;
+        options.ClientSecret = string.IsNullOrWhiteSpace(section["ClientSecret"]) ? "disabled-facebook-secret" : section["ClientSecret"]!;
+        options.CallbackPath = "/api/auth/callback/facebook";
+        options.AuthorizationEndpoint = $"https://www.facebook.com/{FacebookApiVersion}/dialog/oauth";
+        options.TokenEndpoint = $"https://graph.facebook.com/{FacebookApiVersion}/oauth/access_token";
+        options.UserInformationEndpoint = $"https://graph.facebook.com/me?fields=id,name,email,picture";
+        options.SaveTokens = true;
+        options.Scope.Add("email");
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+                context.RunClaimActions(document.RootElement);
+                context.Identity?.AddClaim(new Claim("provider", "facebook"));
+            }
+        };
+    })
+    .AddOAuth(JiraScheme, options =>
+    {
+        var section = builder.Configuration.GetSection("Authentication:Jira");
+        options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-jira-client" : section["ClientId"]!;
+        options.ClientSecret = string.IsNullOrWhiteSpace(section["ClientSecret"]) ? "disabled-jira-secret" : section["ClientSecret"]!;
+        options.CallbackPath = "/api/auth/callback/jira";
+        options.AuthorizationEndpoint = "https://auth.atlassian.com/authorize";
+        options.TokenEndpoint = "https://auth.atlassian.com/oauth/token";
+        options.UserInformationEndpoint = "https://api.atlassian.com/me";
+        options.SaveTokens = true;
+        options.UsePkce = true;
+        options.Scope.Add("read:me");
+        options.Scope.Add("read:account");
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "account_id");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+        options.ClaimActions.MapJsonKey("picture", "picture");
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+                context.RunClaimActions(document.RootElement);
+                context.Identity?.AddClaim(new Claim("provider", "jira"));
+            }
+        };
+    })
+    .AddOAuth(TrelloScheme, options =>
+    {
+        var section = builder.Configuration.GetSection("Authentication:Trello");
+        options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-trello-client" : section["ClientId"]!;
+        options.ClientSecret = string.IsNullOrWhiteSpace(section["ClientSecret"]) ? "disabled-trello-secret" : section["ClientSecret"]!;
+        options.CallbackPath = "/api/auth/callback/trello";
+        options.AuthorizationEndpoint = $"https://trello.com/{TrelloApiVersion}/authorize";
+        options.TokenEndpoint = $"https://trello.com/{TrelloApiVersion}/OAuthGetAccessToken";
+        options.UserInformationEndpoint = $"https://api.trello.com/{TrelloApiVersion}/members/me";
+        options.SaveTokens = true;
+        options.Scope.Add("read");
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "fullName");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get,
+                    $"{context.Options.UserInformationEndpoint}?key={context.Options.ClientId}&token={context.AccessToken}");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+                context.RunClaimActions(document.RootElement);
+                context.Identity?.AddClaim(new Claim("provider", "trello"));
+            }
+        };
+    })
+    .AddOAuth(YandexScheme, options =>
+    {
+        var section = builder.Configuration.GetSection("Authentication:Yandex");
+        options.ClientId = string.IsNullOrWhiteSpace(section["ClientId"]) ? "disabled-yandex-client" : section["ClientId"]!;
+        options.ClientSecret = string.IsNullOrWhiteSpace(section["ClientSecret"]) ? "disabled-yandex-secret" : section["ClientSecret"]!;
+        options.CallbackPath = "/api/auth/callback/yandex";
+        options.AuthorizationEndpoint = "https://oauth.yandex.com/authorize";
+        options.TokenEndpoint = "https://oauth.yandex.com/token";
+        options.UserInformationEndpoint = "https://login.yandex.ru/info?format=json";
+        options.SaveTokens = true;
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "real_name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "default_email");
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Authorization = new AuthenticationHeaderValue("OAuth", context.AccessToken);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+                context.RunClaimActions(document.RootElement);
+                context.Identity?.AddClaim(new Claim("provider", "yandex"));
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -243,6 +411,56 @@ app.MapGet("/api/auth/login/github", (IConfiguration configuration) =>
     }
 
     return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [GitHubScheme]);
+});
+
+app.MapGet("/api/auth/login/google", (IConfiguration configuration) =>
+{
+    if (!IsProviderConfigured(configuration.GetSection("Authentication:Google")))
+    {
+        return Results.Problem("Google authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [GoogleScheme]);
+});
+
+app.MapGet("/api/auth/login/facebook", (IConfiguration configuration) =>
+{
+    if (!IsProviderConfigured(configuration.GetSection("Authentication:Facebook")))
+    {
+        return Results.Problem("Facebook authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [FacebookScheme]);
+});
+
+app.MapGet("/api/auth/login/jira", (IConfiguration configuration) =>
+{
+    if (!IsProviderConfigured(configuration.GetSection("Authentication:Jira")))
+    {
+        return Results.Problem("Jira authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [JiraScheme]);
+});
+
+app.MapGet("/api/auth/login/trello", (IConfiguration configuration) =>
+{
+    if (!IsProviderConfigured(configuration.GetSection("Authentication:Trello")))
+    {
+        return Results.Problem("Trello authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [TrelloScheme]);
+});
+
+app.MapGet("/api/auth/login/yandex", (IConfiguration configuration) =>
+{
+    if (!IsProviderConfigured(configuration.GetSection("Authentication:Yandex")))
+    {
+        return Results.Problem("Yandex authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [YandexScheme]);
 });
 
 app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
