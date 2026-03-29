@@ -89,4 +89,30 @@ public sealed class AzureDevOpsConnectorTests
     {
         Assert.Equal(expected, Math.Clamp(11 - priority, 1, 10));
     }
+
+    // ── IsBlocked ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapStatus_BlockedState_MapsToBlocked()
+    {
+        Assert.Equal("blocked", AzureDevOpsConnector.MapStatus("Blocked"));
+    }
+
+    [Fact]
+    public void IsBlocked_DerivedFromBlockedState()
+    {
+        // IsBlocked = MapStatus(state) == "blocked"
+        Assert.True(AzureDevOpsConnector.MapStatus("Blocked") == "blocked");
+        Assert.False(AzureDevOpsConnector.MapStatus("Active") == "blocked");
+    }
+
+    // ── TargetDate (ParseTargetDate is private; exercised via DaysSince) ─────
+
+    [Fact]
+    public void DaysSince_CanParseIso8601_TargetDateFormat()
+    {
+        // Azure DevOps returns TargetDate in ISO 8601 format — same parser used for age
+        var isoDate = DateTimeOffset.UtcNow.AddDays(-2).ToString("O");
+        Assert.InRange(AzureDevOpsConnector.DaysSince(isoDate), 1, 3);
+    }
 }

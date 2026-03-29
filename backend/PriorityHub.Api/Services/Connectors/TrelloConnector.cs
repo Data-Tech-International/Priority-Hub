@@ -112,6 +112,8 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
                     AgeDays = DaysSince(card.TryGetProperty("dateLastActivity", out var activityElement) ? activityElement.GetString() : null),
                     BlockerCount = labels.Any(label => label.Equals("blocked", StringComparison.OrdinalIgnoreCase)) ? 1 : 0,
                     DueInDays = dueInDays,
+                    TargetDate = ParseTargetDate(dueValue),
+                    IsBlocked = labels.Any(label => label.Equals("blocked", StringComparison.OrdinalIgnoreCase)),
                     Tags = labels
                 });
             }
@@ -155,6 +157,11 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
     {
         if (!DateTimeOffset.TryParse(value, out var parsed)) return null;
         return (int)Math.Round((parsed - DateTimeOffset.UtcNow).TotalDays);
+    }
+
+    internal static DateTimeOffset? ParseTargetDate(string? value)
+    {
+        return DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
     }
 
     private static string BuildCardUrl(JsonElement card)

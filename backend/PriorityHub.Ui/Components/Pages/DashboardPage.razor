@@ -162,15 +162,7 @@
                                @oninput="e => _search = e.Value?.ToString() ?? string.Empty"
                                placeholder="Search title, ID, or tag" />
                     </label>
-                    <label>
-                        <span>Provider</span>
-                        <select value="@_selectedProvider" @onchange="OnProviderChanged">
-                            @foreach (var opt in ProviderOptions)
-                            {
-                                <option value="@opt">@(opt == "all" ? "All providers" : WorkItemRanker.FormatProviderName(opt))</option>
-                            }
-                        </select>
-                    </label>
+                    <ConnectorFilter AvailableConnectors="AvailableConnectors" SelectedConnectors="_selectedConnectors" OnConnectorsChange="OnConnectorsChanged" />
                     <label>
                         <span>Status</span>
                         <select value="@_selectedStatus" @onchange="OnStatusChanged">
@@ -187,6 +179,24 @@
                             {
                                 <option value="@opt">@(opt == "all" ? "All bands" : WorkItemRanker.FormatPriorityBand(opt))</option>
                             }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Blocked</span>
+                        <select value="@_selectedBlocked" @onchange="OnBlockedChanged">
+                            <option value="all">All</option>
+                            <option value="blocked-only">Blocked only</option>
+                            <option value="not-blocked">Not blocked</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Target date</span>
+                        <select value="@_selectedTargetDate" @onchange="OnTargetDateChanged">
+                            <option value="all">All</option>
+                            <option value="has-date">Has target date</option>
+                            <option value="no-date">No target date</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="due-7">Due within 7 days</option>
                         </select>
                     </label>
                     <TagFilter AvailableTags="AvailableTags" SelectedTags="_selectedTags" OnTagsChange="OnTagsChanged" />
@@ -249,6 +259,7 @@
                     {
                         var cardClass = "work-item-card"
                             + (item.Item.IsNew ? " is-new-item" : "")
+                            + (item.Item.IsBlocked ? " is-blocked" : "")
                             + (_draggedItemId == item.Item.Id ? " is-dragging" : "")
                             + (_dragOverItemId == item.Item.Id && _draggedItemId != item.Item.Id ? " drag-over" : "");
                         <article class="@cardClass"
@@ -306,6 +317,21 @@
                                 </div>
                             </div>
 
+                            @if (item.Item.IsBlocked || item.Item.TargetDate.HasValue)
+                            {
+                                <div class="target-date-info">
+                                    @if (item.Item.IsBlocked)
+                                    {
+                                        <span class="blocked-pill">Blocked</span>
+                                    }
+                                    @if (item.Item.TargetDate.HasValue)
+                                    {
+                                        <span class="target-date-text">@WorkItemRanker.FormatTargetDate(item.Item.TargetDate)</span>
+                                        <span class="days-left-badge @DaysLeftClass(item.Item.TargetDate)">@WorkItemRanker.FormatDaysLeft(item.Item.TargetDate)</span>
+                                    }
+                                </div>
+                            }
+
                             <div class="tag-row">
                                 @if (item.Item.Tags.Count == 0)
                                 {
@@ -334,7 +360,6 @@
 </div>
 
 @code {
-    private static readonly string[] ProviderOptions = ["all", "azure-devops", "github", "jira", "microsoft-tasks", "outlook-flagged-mail", "trello"];
     private static readonly string[] StatusOptions = ["all", "blocked", "in-progress", "review", "planned", "done"];
     private static readonly string[] PriorityOptions = ["all", "critical", "focus", "maintain"];
 
@@ -345,10 +370,12 @@
     private bool _loading = true;
     private string? _error;
     private string? _statusMessage;
-    private string _selectedProvider = "all";
     private string _selectedStatus = "all";
     private string _selectedBand = "all";
     private List<string> _selectedTags = [];
+    private List<string> _selectedConnectors = [];
+    private string _selectedBlocked = "all";
+    private string _selectedTargetDate = "all";
     private string _search = "";
     private string? _draggedItemId;
     private string? _dragOverItemId;
@@ -364,6 +391,13 @@
             .Order()
             .ToList();
 
+    private IReadOnlyList<string> AvailableConnectors =>
+        _dashboard.BoardConnections
+            .Select(b => b.Provider)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order()
+            .ToList();
+
     private List<RankedWorkItem> FilteredItems
     {
         get
@@ -371,10 +405,13 @@
             var query = _search.Trim().ToLowerInvariant();
             return _rankedItems.Where(i =>
             {
-                if (_selectedProvider != "all" && i.Item.Provider != _selectedProvider) return false;
+                if (_selectedConnectors.Count > 0 && !_selectedConnectors.Contains(i.Item.Provider)) return false;
                 if (_selectedStatus != "all" && i.Item.Status != _selectedStatus) return false;
                 if (_selectedBand != "all" && i.Band != _selectedBand) return false;
                 if (_selectedTags.Count > 0 && !_selectedTags.Any(t => i.Item.Tags.Contains(t))) return false;
+                if (_selectedBlocked == "blocked-only" && !i.Item.IsBlocked) return false;
+                if (_selectedBlocked == "not-blocked" && i.Item.IsBlocked) return false;
+                if (!MatchesTargetDateFilter(i.Item.TargetDate, _selectedTargetDate)) return false;
                 if (query.Length > 0 &&
                     !i.Item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) &&
                     !i.Item.Id.Contains(query, StringComparison.OrdinalIgnoreCase) &&
@@ -516,7 +553,9 @@
 
     private void OnTagsChanged(List<string> tags) => _selectedTags = tags;
 
-    private void OnProviderChanged(ChangeEventArgs e) => _selectedProvider = e.Value?.ToString() ?? "all";
+    private void OnConnectorsChanged(List<string> connectors) => _selectedConnectors = connectors;
+    private void OnBlockedChanged(ChangeEventArgs e) => _selectedBlocked = e.Value?.ToString() ?? "all";
+    private void OnTargetDateChanged(ChangeEventArgs e) => _selectedTargetDate = e.Value?.ToString() ?? "all";
     private void OnStatusChanged(ChangeEventArgs e) => _selectedStatus = e.Value?.ToString() ?? "all";
     private void OnBandChanged(ChangeEventArgs e) => _selectedBand = e.Value?.ToString() ?? "all";
 
@@ -553,6 +592,29 @@
         var sub = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
         var provider = user.FindFirst("provider")?.Value ?? "unknown";
         return $"{sub}_{provider}";
+    }
+
+    private static string DaysLeftClass(DateTimeOffset? targetDate)
+    {
+        if (targetDate is null) return string.Empty;
+        var days = WorkItemRanker.DaysUntil(targetDate.Value);
+        if (days < 0) return "days-left-overdue";
+        if (days <= 7) return "days-left-soon";
+        return "days-left-ok";
+    }
+
+    private static bool MatchesTargetDateFilter(DateTimeOffset? targetDate, string filter)
+    {
+        if (filter == "all") return true;
+        var now = DateTimeOffset.UtcNow;
+        return filter switch
+        {
+            "has-date" => targetDate.HasValue,
+            "no-date" => !targetDate.HasValue,
+            "overdue" => targetDate.HasValue && targetDate.Value < now,
+            "due-7" => targetDate.HasValue && targetDate.Value >= now && targetDate.Value <= now.AddDays(7),
+            _ => true
+        };
     }
 
     private async Task<Dictionary<string, string>> GetOauthTokensAsync(HttpContext httpContext, CancellationToken ct)
