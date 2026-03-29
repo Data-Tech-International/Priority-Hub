@@ -58,7 +58,7 @@
                         <section class="provider-config-block">
                             <div class="provider-config-header">
                                 <div>
-                                    <h3>@connector.DisplayName connections</h3>
+                                    <h3><span class="connector-emoji">@connector.DefaultEmoji</span> @connector.DisplayName connections</h3>
                                     <p>@connector.Description</p>
                                 </div>
                                 <button class="add-button" type="button" @onclick="() => AddConnection(connector)">
@@ -84,7 +84,11 @@
 
                                     <article class="connection-editor-card">
                                         <div class="connection-editor-header">
-                                            <strong>@(GetConnectionField(connection, "name") is string n && n.Length > 0 ? n : $"Connection {index + 1}")</strong>
+                                            <div class="connection-editor-title">
+                                                <EmojiPicker Value="@(GetConnectionField(connection, EmojiField) ?? connector.DefaultEmoji)"
+                                                             OnEmojiSelected="emoji => SetConnectionField(configKey, index, EmojiField, emoji)" />
+                                                <strong>@(GetConnectionField(connection, "name") is string n && n.Length > 0 ? n : $"Connection {index + 1}")</strong>
+                                            </div>
                                             <button class="remove-button" type="button" @onclick="() => RemoveConnection(configKey, index)">
                                                 Remove
                                             </button>
@@ -268,6 +272,7 @@
 
 @code {
     private const string EnabledField = "enabled";
+    private const string EmojiField = "emoji";
     private string _activeTab = "connectors";
     private bool _loadingConfig = true;
     private bool _savingConfig;
@@ -290,7 +295,7 @@
     {
         // Load connector metadata from registry
         _connectorMetadata = ConnectorRegistry.GetAll().Select(c => new ConnectorMeta(
-            c.ProviderKey, c.DisplayName, c.Description, c.ConfigFields)).ToList();
+            c.ProviderKey, c.DisplayName, c.Description, c.DefaultEmoji, c.ConfigFields)).ToList();
 
         // Load configuration
         var httpContext = HttpContextAccessor.HttpContext;
@@ -422,7 +427,8 @@
         var dict = new Dictionary<string, object?>
         {
             ["id"] = Guid.NewGuid().ToString("N"),
-            ["enabled"] = true
+            ["enabled"] = true,
+            [EmojiField] = connector.DefaultEmoji
         };
         foreach (var field in connector.ConfigFields)
         {
@@ -468,6 +474,15 @@
             foreach (var conn in conns)
             {
                 var errors = new Dictionary<string, string?>();
+
+                // Validate emoji field
+                var emojiValue = GetConnectionField(conn, EmojiField);
+                if (!string.IsNullOrEmpty(emojiValue) && !EmojiData.IsValidEmoji(emojiValue))
+                {
+                    errors[EmojiField] = "Emoji must be a single emoji character.";
+                    hasErrors = true;
+                }
+
                 foreach (var field in connector.ConfigFields)
                 {
                     var value = (GetConnectionField(conn, field.Key) ?? "").Trim();
@@ -610,5 +625,5 @@
 
     private sealed record ConnectorMeta(
         string ProviderKey, string DisplayName, string Description,
-        ConnectorFieldSpec[] ConfigFields);
+        string DefaultEmoji, ConnectorFieldSpec[] ConfigFields);
 }

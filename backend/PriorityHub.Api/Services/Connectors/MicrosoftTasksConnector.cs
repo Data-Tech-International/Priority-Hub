@@ -12,6 +12,7 @@ public sealed class MicrosoftTasksConnector(HttpClient httpClient) : IConnector
     public string ProviderKey => "microsoft-tasks";
     public string DisplayName => "Microsoft Tasks";
     public string Description => "Aggregate Microsoft To Do tasks from Microsoft Graph.";
+    public string DefaultEmoji => "✅";
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -33,6 +34,7 @@ public sealed class MicrosoftTasksConnector(HttpClient httpClient) : IConnector
         {
             Id = connection.Id,
             Provider = ProviderKey,
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
             WorkspaceName = "Microsoft 365",
             BoardName = string.IsNullOrWhiteSpace(connection.Name) ? "Microsoft Tasks" : connection.Name,
             ProjectName = string.IsNullOrWhiteSpace(connection.TaskListName) ? "All task lists" : connection.TaskListName,
