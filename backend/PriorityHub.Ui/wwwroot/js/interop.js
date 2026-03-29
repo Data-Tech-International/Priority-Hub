@@ -24,3 +24,8 @@ window.PriorityHub.focusNthOption = function (container, index) {
         options[index].focus();
     }
 };
+
+window.PriorityHub.focusById = function (id) {
+    var el = document.getElementById(id);
+    if (el) el.focus();
+};
