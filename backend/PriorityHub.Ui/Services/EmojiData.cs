@@ -135,7 +135,6 @@ public static class EmojiData
         {
             var matching = category.Emojis
                 .Where(e =>
-                    e.Emoji.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                     e.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                     e.Keywords.Any(k => k.Contains(q, StringComparison.OrdinalIgnoreCase)))
                 .ToArray();
