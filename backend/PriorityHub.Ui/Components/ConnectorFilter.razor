@@ -43,7 +43,7 @@
                         <input type="checkbox"
                                checked="@SelectedConnectors.Contains(connector)"
                                @onchange="() => ToggleConnector(connector)" />
-                        <span>@WorkItemRanker.GetProviderEmoji(connector) @WorkItemRanker.FormatProviderName(connector)</span>
+                        <span>@GetConnectorLabel(connector)</span>
                     </label>
                 }
             }
@@ -55,6 +55,7 @@
     [Parameter, EditorRequired] public IReadOnlyList<string> AvailableConnectors { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<string> SelectedConnectors { get; set; } = [];
     [Parameter] public EventCallback<List<string>> OnConnectorsChange { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string>? ConnectorLabels { get; set; }
 
     private bool _open;
     private ElementReference _containerRef;
@@ -66,8 +67,15 @@
     private string Label => SelectedConnectors.Count == 0
         ? "All connectors"
         : SelectedConnectors.Count == 1
-            ? $"{WorkItemRanker.GetProviderEmoji(SelectedConnectors[0])} {WorkItemRanker.FormatProviderName(SelectedConnectors[0])}"
+            ? GetConnectorLabel(SelectedConnectors[0])
             : $"Connectors ({SelectedConnectors.Count})";
+
+    private string GetConnectorLabel(string connector)
+    {
+        if (ConnectorLabels is not null && ConnectorLabels.TryGetValue(connector, out var label))
+            return label;
+        return $"{WorkItemRanker.GetProviderEmoji(connector)} {WorkItemRanker.FormatProviderName(connector)}";
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
