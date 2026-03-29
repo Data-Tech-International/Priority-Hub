@@ -5,6 +5,7 @@
 @inject ConnectorRegistry ConnectorRegistry
 @inject IHttpContextAccessor HttpContextAccessor
 @inject PassphraseCacheInterop PassphraseCache
+@inject IJSRuntime JS
 
 <PageTitle>Settings — Priority Hub</PageTitle>
 
@@ -18,19 +19,26 @@
 
         @if (_statusMessage is not null)
         {
-            <section class="status-banner status-info">
-                <strong>Status</strong>
+            <section class="status-banner @(_statusIsError ? "status-error" : "status-info")" role="status" aria-live="polite">
                 <span>@_statusMessage</span>
+                <button class="status-dismiss" type="button" @onclick="DismissStatus" aria-label="Dismiss notification">✕</button>
             </section>
         }
 
-        <div class="settings-tabs">
-            @foreach (var tab in new[] { "connectors", "account", "export", "security" })
+        <div class="settings-tabs" role="tablist" aria-label="Settings sections" @onkeydown="HandleTabKeyDown">
+            @foreach (var tabDef in TabDefs)
             {
+                var isActive = _activeTab == tabDef.Key;
                 <button type="button"
-                        class="settings-tab@(_activeTab == tab ? " is-active" : "")"
-                        @onclick="() => SwitchTabAsync(tab)">
-                    @(char.ToUpper(tab[0]) + tab[1..])
+                        class="settings-tab@(isActive ? " is-active" : "")"
+                        role="tab"
+                        aria-selected="@isActive"
+                        aria-controls="tabpanel-@tabDef.Key"
+                        id="tab-@tabDef.Key"
+                        tabindex="@(isActive ? 0 : -1)"
+                        @onclick="() => SwitchTabAsync(tabDef.Key)">
+                    <span class="settings-tab-icon" aria-hidden="true">@tabDef.Icon</span>
+                    <span>@tabDef.Label</span>
                 </button>
             }
         </div>
@@ -38,10 +46,13 @@
         @* ── Connectors tab ── *@
         @if (_activeTab == "connectors")
         {
-            <div class="settings-tab-content">
+            <div class="settings-tab-content" id="tabpanel-connectors" role="tabpanel" aria-labelledby="tab-connectors">
                 @if (_loadingConfig)
                 {
-                    <p>Loading configuration…</p>
+                    <div class="settings-loading" aria-live="polite" aria-busy="true">
+                        <span class="settings-spinner" aria-hidden="true"></span>
+                        <span>Loading configuration…</span>
+                    </div>
                 }
                 else if (_connectorMetadata.Count == 0)
                 {
@@ -54,108 +65,148 @@
                         var configKey = ToConfigKey(connector.ProviderKey);
                         var connections = GetConnections(configKey);
                         var helpKey = $"settings.connectors.{connector.ProviderKey}";
+                        var isExpanded = _expandedConnectors.Contains(connector.ProviderKey);
 
                         <section class="provider-config-block">
-                            <div class="provider-config-header">
-                                <div>
-                                    <h3><span class="connector-emoji">@connector.DefaultEmoji</span> @connector.DisplayName connections</h3>
-                                    <p>@connector.Description</p>
-                                </div>
-                                <button class="add-button" type="button" @onclick="() => AddConnection(connector)">
-                                    Add connection
-                                </button>
-                            </div>
-
-                            @if (HelpContent.Entries.TryGetValue(helpKey, out var help))
-                            {
-                                <HelpPanel ContextKey="@helpKey" Title="@help.Title">
-                                    @foreach (var line in help.Body)
+                            <button type="button"
+                                    class="provider-config-toggle"
+                                    @onclick="() => ToggleConnectorSection(connector.ProviderKey)"
+                                    aria-expanded="@isExpanded"
+                                    aria-controls="connector-content-@connector.ProviderKey">
+                                <div class="provider-config-toggle-info">
+                                    <div class="provider-config-toggle-title">
+                                        <span class="connector-emoji" aria-hidden="true">@connector.DefaultEmoji</span>
+                                        <strong>@connector.DisplayName</strong>
+                                    </div>
+                                    <span class="provider-config-summary">@connector.Description</span>
+                                    @if (!isExpanded)
                                     {
-                                        <p>@line</p>
+                                        <span class="provider-config-connection-count">
+                                            @(connections.Count == 0
+                                                ? "No connections configured"
+                                                : connections.Count == 1
+                                                    ? $"1 connection: {(GetConnectionField(connections[0], "name") is string n && n.Length > 0 ? n : "Connection 1")}"
+                                                    : $"{connections.Count} connections configured")
+                                        </span>
                                     }
-                                </HelpPanel>
-                            }
+                                </div>
+                                <span class="provider-config-chevron" aria-hidden="true">@(isExpanded ? "▲" : "▼")</span>
+                            </button>
 
-                            <div class="connection-editor-list">
-                                @for (var idx = 0; idx < connections.Count; idx++)
-                                {
-                                    var index = idx;
-                                    var connection = connections[index];
-
-                                    <article class="connection-editor-card">
-                                        <div class="connection-editor-header">
-                                            <div class="connection-editor-title">
-                                                <EmojiPicker Value="@(GetConnectionField(connection, EmojiField) ?? connector.DefaultEmoji)"
-                                                             OnEmojiSelected="emoji => SetConnectionField(configKey, index, EmojiField, emoji)" />
-                                                <strong>@(GetConnectionField(connection, "name") is string n && n.Length > 0 ? n : $"Connection {index + 1}")</strong>
-                                            </div>
-                                            <button class="remove-button" type="button" @onclick="() => RemoveConnection(configKey, index)">
-                                                Remove
-                                            </button>
-                                        </div>
-
-                                        <label class="toggle-row">
-                                            <input type="checkbox"
-                                                   checked="@(GetConnectionEnabled(connection))"
-                                                   @onchange="e => SetConnectionField(configKey, index, EnabledField, e.Value)" />
-                                            <span>Enabled</span>
-                                        </label>
-
-                                        <div class="config-grid">
-                                            @foreach (var field in connector.ConfigFields)
+                            @if (isExpanded)
+                            {
+                                <div class="provider-config-content" id="connector-content-@connector.ProviderKey">
+                                    @if (HelpContent.Entries.TryGetValue(helpKey, out var help))
+                                    {
+                                        <HelpPanel ContextKey="@helpKey" Title="@help.Title">
+                                            @foreach (var line in help.Body)
                                             {
-                                                var fieldError = GetFieldError(configKey, index, field.Key);
-                                                var isWide = field.InputKind == "textarea";
-
-                                                @if (isWide)
-                                                {
-                                                    <label class="config-field config-field-wide@(fieldError is not null ? " config-field-error" : "")">
-                                                        <span>@field.Label</span>
-                                                        <textarea value="@(GetConnectionField(connection, field.Key) ?? "")"
-                                                                  @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)"
-                                                                  rows="4"></textarea>
-                                                        @if (fieldError is not null)
-                                                        {
-                                                            <small>@fieldError</small>
-                                                        }
-                                                    </label>
-                                                }
-                                                else
-                                                {
-                                                    <label class="config-field@(fieldError is not null ? " config-field-error" : "")">
-                                                        <span>@field.Label</span>
-                                                        <input type="@(field.InputKind == "password" ? "password" : "text")"
-                                                               value="@(GetConnectionField(connection, field.Key) ?? "")"
-                                                               @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)" />
-                                                        @if (fieldError is not null)
-                                                        {
-                                                            <small>@fieldError</small>
-                                                        }
-                                                    </label>
-                                                }
+                                                <p>@line</p>
                                             }
-                                        </div>
-                                    </article>
-                                }
-                            </div>
+                                        </HelpPanel>
+                                    }
+
+                                    <div class="connection-editor-list">
+                                        @for (var idx = 0; idx < connections.Count; idx++)
+                                        {
+                                            var index = idx;
+                                            var connection = connections[index];
+
+                                            <article class="connection-editor-card">
+                                                <div class="connection-editor-header">
+                                                    <div class="connection-editor-title">
+                                                        <EmojiPicker Value="@(GetConnectionField(connection, EmojiField) ?? connector.DefaultEmoji)"
+                                                                     OnEmojiSelected="emoji => SetConnectionField(configKey, index, EmojiField, emoji)" />
+                                                        <strong>@(GetConnectionField(connection, "name") is string n && n.Length > 0 ? n : $"Connection {index + 1}")</strong>
+                                                    </div>
+                                                    <button class="remove-button" type="button"
+                                                            @onclick="() => RemoveConnectionWithConfirmAsync(configKey, index)"
+                                                            aria-label="@($"Remove {(GetConnectionField(connection, "name") is string cn && cn.Length > 0 ? cn : $"connection {index + 1}")}")">
+                                                        Remove
+                                                    </button>
+                                                </div>
+
+                                                <label class="toggle-row">
+                                                    <input type="checkbox"
+                                                           checked="@(GetConnectionEnabled(connection))"
+                                                           @onchange="e => SetConnectionField(configKey, index, EnabledField, e.Value)" />
+                                                    <span>Enabled</span>
+                                                </label>
+
+                                                <div class="config-grid">
+                                                    @foreach (var field in connector.ConfigFields)
+                                                    {
+                                                        var fieldError = GetFieldError(configKey, index, field.Key);
+                                                        var isWide = field.InputKind == "textarea";
+
+                                                        @if (isWide)
+                                                        {
+                                                            <label class="config-field config-field-wide@(fieldError is not null ? " config-field-error" : "")">
+                                                                <span>@field.Label</span>
+                                                                <textarea value="@(GetConnectionField(connection, field.Key) ?? "")"
+                                                                          @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)"
+                                                                          rows="4"></textarea>
+                                                                @if (fieldError is not null)
+                                                                {
+                                                                    <small role="alert">@fieldError</small>
+                                                                }
+                                                            </label>
+                                                        }
+                                                        else
+                                                        {
+                                                            <label class="config-field@(fieldError is not null ? " config-field-error" : "")">
+                                                                <span>@field.Label</span>
+                                                                <input type="@(field.InputKind == "password" ? "password" : "text")"
+                                                                       value="@(GetConnectionField(connection, field.Key) ?? "")"
+                                                                       @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)" />
+                                                                @if (fieldError is not null)
+                                                                {
+                                                                    <small role="alert">@fieldError</small>
+                                                                }
+                                                            </label>
+                                                        }
+                                                    }
+                                                </div>
+                                            </article>
+                                        }
+                                    </div>
+
+                                    <div class="provider-config-footer">
+                                        <button class="add-button" type="button" @onclick="() => AddConnection(connector)">
+                                            + Add connection
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                         </section>
                     }
 
-                    <div class="configuration-actions">
+                    <div class="settings-save-footer">
+                        @if (_hasUnsavedChanges)
+                        {
+                            <span class="unsaved-indicator" aria-live="polite">Unsaved changes</span>
+                        }
                         <button class="refresh-button" type="button"
                                 @onclick="SaveConfiguration"
                                 disabled="@(_savingConfig || _loadingConfig)">
-                            @(_savingConfig ? "Saving…" : "Save connector configuration")
+                            @if (_savingConfig)
+                            {
+                                <span class="button-spinner" aria-hidden="true"></span>
+                                @:Saving…
+                            }
+                            else
+                            {
+                                @:Save connector configuration
+                            }
                         </button>
                     </div>
                 }
             </div>
         }
-
         @* ── Account tab ── *@
         @if (_activeTab == "account")
         {
-            <div class="settings-tab-content">
+            <div class="settings-tab-content" id="tabpanel-account" role="tabpanel" aria-labelledby="tab-account">
                 <div class="account-card">
                     <AuthorizeView>
                         <Authorized>
@@ -202,7 +253,7 @@
         @* ── Export tab ── *@
         @if (_activeTab == "export")
         {
-            <div class="settings-tab-content">
+            <div class="settings-tab-content" id="tabpanel-export" role="tabpanel" aria-labelledby="tab-export">
                 @if (HelpContent.Entries.TryGetValue("settings.export", out var exportHelp))
                 {
                     <HelpPanel ContextKey="settings.export" Title="@exportHelp.Title">
@@ -231,7 +282,7 @@
         @* ── Security tab ── *@
         @if (_activeTab == "security")
         {
-            <div class="settings-tab-content">
+            <div class="settings-tab-content" id="tabpanel-security" role="tabpanel" aria-labelledby="tab-security">
                 <div class="security-section">
                     <article class="security-card">
                         <h3>Remembered unlock</h3>
@@ -277,6 +328,17 @@
     private bool _loadingConfig = true;
     private bool _savingConfig;
     private string? _statusMessage;
+    private bool _statusIsError;
+    private bool _hasUnsavedChanges;
+    private readonly HashSet<string> _expandedConnectors = [];
+
+    private static readonly (string Key, string Icon, string Label)[] TabDefs =
+    [
+        ("connectors", "🔌", "Connectors"),
+        ("account", "👤", "Account"),
+        ("export", "📤", "Export"),
+        ("security", "🔒", "Security"),
+    ];
 
     // Connector metadata from the registry
     private List<ConnectorMeta> _connectorMetadata = [];
@@ -310,6 +372,7 @@
         catch (Exception ex)
         {
             _statusMessage = ex.Message;
+            _statusIsError = true;
         }
         finally
         {
@@ -347,6 +410,34 @@
     private List<Dictionary<string, object?>> GetConnections(string configKey) =>
         _connections.TryGetValue(configKey, out var list) ? list : [];
 
+    private void DismissStatus() => _statusMessage = null;
+
+    private void ToggleConnectorSection(string providerKey)
+    {
+        if (!_expandedConnectors.Remove(providerKey))
+            _expandedConnectors.Add(providerKey);
+    }
+
+    private async Task HandleTabKeyDown(KeyboardEventArgs e)
+    {
+        var tabKeys = TabDefs.Select(t => t.Key).ToArray();
+        var currentIndex = Array.IndexOf(tabKeys, _activeTab);
+        var newIndex = e.Key switch
+        {
+            "ArrowRight" => (currentIndex + 1) % tabKeys.Length,
+            "ArrowLeft" => (currentIndex - 1 + tabKeys.Length) % tabKeys.Length,
+            "Home" => 0,
+            "End" => tabKeys.Length - 1,
+            _ => -1
+        };
+
+        if (newIndex >= 0 && newIndex != currentIndex)
+        {
+            await SwitchTabAsync(tabKeys[newIndex]);
+            await JS.InvokeVoidAsync("PriorityHub.focusById", $"tab-{tabKeys[newIndex]}");
+        }
+    }
+
     private async Task SwitchTabAsync(string tab)
     {
         _activeTab = tab;
@@ -380,10 +471,12 @@
             await PassphraseCache.ClearPassphraseAsync();
             _hasCachedPassphrase = false;
             _statusMessage = "Remembered unlock cleared.";
+            _statusIsError = false;
         }
         catch (Exception ex)
         {
             _statusMessage = ex.Message;
+            _statusIsError = true;
         }
         finally
         {
@@ -410,12 +503,73 @@
                 list[index][field] = value?.ToString();
             }
 
-            // Clear field error
-            if (_validationErrors.TryGetValue(configKey, out var errors) && index < errors.Count)
+            // Inline validation for text/password fields on change
+            if (field != "enabled" && field != EmojiField)
+            {
+                ValidateFieldInline(configKey, index, field);
+            }
+            else if (_validationErrors.TryGetValue(configKey, out var errors) && index < errors.Count)
             {
                 errors[index].Remove(field);
             }
         }
+        _hasUnsavedChanges = true;
+    }
+
+    private void ValidateFieldInline(string configKey, int index, string fieldKey)
+    {
+        var connector = _connectorMetadata.FirstOrDefault(c => ToConfigKey(c.ProviderKey) == configKey);
+        if (connector is null) return;
+
+        var field = connector.ConfigFields.FirstOrDefault(f => f.Key == fieldKey);
+        if (field is null) return;
+
+        if (!_validationErrors.ContainsKey(configKey))
+            _validationErrors[configKey] = [];
+        while (_validationErrors[configKey].Count <= index)
+            _validationErrors[configKey].Add([]);
+
+        var conn = GetConnections(configKey);
+        if (index >= conn.Count) return;
+
+        var value = (GetConnectionField(conn[index], fieldKey) ?? "").Trim();
+        var errors = _validationErrors[configKey][index];
+
+        var httpContext = HttpContextAccessor.HttpContext;
+        var userProvider = httpContext?.User.FindFirst("provider")?.Value ?? "";
+
+        if (fieldKey == "personalAccessToken" && connector.ProviderKey == "azure-devops"
+            && string.Equals(userProvider, "microsoft", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Remove(fieldKey);
+            return;
+        }
+
+        if (field.Required && string.IsNullOrWhiteSpace(value))
+        {
+            errors[fieldKey] = $"{field.Label} is required.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            errors.Remove(fieldKey);
+            return;
+        }
+
+        if (fieldKey == "baseUrl" && !Uri.TryCreate(value, UriKind.Absolute, out _))
+        {
+            errors[fieldKey] = "Must be a valid URL (e.g. https://yourorg.atlassian.net).";
+            return;
+        }
+
+        if (fieldKey == "email" && !value.Contains('@'))
+        {
+            errors[fieldKey] = "Must be a valid email address.";
+            return;
+        }
+
+        errors.Remove(fieldKey);
     }
 
     private void AddConnection(ConnectorMeta connector)
@@ -435,6 +589,8 @@
             dict[field.Key] = field.DefaultValue ?? "";
         }
         _connections[configKey].Add(dict);
+        _expandedConnectors.Add(connector.ProviderKey);
+        _hasUnsavedChanges = true;
     }
 
     private void RemoveConnection(string configKey, int index)
@@ -446,6 +602,16 @@
         if (_validationErrors.TryGetValue(configKey, out var errors) && index < errors.Count)
         {
             errors.RemoveAt(index);
+        }
+    }
+
+    private async Task RemoveConnectionWithConfirmAsync(string configKey, int index)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove this connection? This cannot be undone.");
+        if (confirmed)
+        {
+            RemoveConnection(configKey, index);
+            _hasUnsavedChanges = true;
         }
     }
 
@@ -550,6 +716,7 @@
         if (!ValidateAll())
         {
             _statusMessage = "Fix the highlighted fields before saving.";
+            _statusIsError = true;
             return;
         }
 
@@ -568,10 +735,13 @@
             _config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
             RebuildConnectionsDictionary();
             _statusMessage = "Configuration saved. Return to the Dashboard to see refreshed data.";
+            _statusIsError = false;
+            _hasUnsavedChanges = false;
         }
         catch (Exception ex)
         {
             _statusMessage = ex.Message;
+            _statusIsError = true;
         }
         finally
         {
@@ -596,6 +766,7 @@
         });
 
         _statusMessage = "Configuration exported (check your downloads).";
+        _statusIsError = false;
         await Task.CompletedTask;
     }
 
