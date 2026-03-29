@@ -10,23 +10,6 @@ target: vscode
 
 ## Test Execution
 
-### Frontend (React + Vitest)
-
-**Test framework:** Vitest + React Testing Library  
-**Output:** JUnit XML + coverage data
-
-```bash
-npm run test           # Run all frontend tests
-npm run test:watch    # Watch mode (development)
-npm run test:coverage # Generate coverage report
-```
-
-**Configuration:**
-- Test files: `src/**/*.test.js` or `src/**/*.test.jsx`
-- Setup: [src/test/setupTests.js](../../src/test/setupTests.js)
-- Coverage instrument: `@vitest/coverage-v8`
-- HTML report: `coverage/index.html`
-
 ### Backend (.NET + xUnit)
 
 **Test framework:** xUnit with mocked HttpClient  
@@ -51,17 +34,15 @@ dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 
 ### Threshold by Component
 
-**Frontend:**
-- Overall: 60% (configurable in Vitest)
-- Critical paths: 80% (helpers, auth, API layer)
-- UI components: 70% (at least snapshot testing)
-
 **Backend:**
 - Overall: 60%
 - Services/Business logic: 80%
-- Controllers: 70%
 - Models: 50% (minimal testing required)
-- Tests (PriorityHub.Api.Tests): Not covered (tests test tests)
+
+**UI (Blazor):**
+- Overall: 60%
+- Components: 70%
+- Services: 80%
 
 ### Special Cases
 
@@ -71,18 +52,6 @@ dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 - **Error paths:** All error cases must be tested
 
 ## Coverage Collection & Reporting
-
-### Frontend Coverage Collection
-```bash
-npm run test:coverage
-# Generates: coverage/index.html and coverage/LCOV.info
-```
-
-**Metrics:**
-- Statements covered: X%
-- Branches covered: X%
-- Functions covered: X%
-- Lines covered: X%
 
 ### Backend Coverage Collection (Coverlet)
 ```bash
@@ -113,12 +82,11 @@ Coverage delta vs main:
 ## Workflow Behavior
 
 ### On Push to main/init
-1. Run `npm run test:coverage` (frontend)
-2. Run `dotnet test` with coverage (backend)
-3. Parse coverage reports
-4. **Fail if:** Coverage < 60% on either platform
-5. **Warn if:** Coverage declining vs main branch
-6. Generate summary report
+1. Run `dotnet test` with coverage (backend and UI)
+2. Parse coverage reports
+3. **Fail if:** Coverage < 60%
+4. **Warn if:** Coverage declining vs main branch
+5. Generate summary report
 
 ### On Pull Request
 1. Same tests as push
@@ -136,8 +104,6 @@ Coverage delta vs main:
    - Comment with improvement notice if +5% better
 
 ## Configuration References
-- Frontend config: [package.json](../../package.json) (test scripts)
-- Frontend coverage: [vite.config.js](../../vite.config.js) (coverage.include, threshold)
 - Backend config: [backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj](../../backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj)
 - Workflow: [.github/workflows/test-coverage.yml](../workflows/test-coverage.yml)
 - Threshold env var: `${{ env.COVERAGE_THRESHOLD }}` (default: 60%)
@@ -147,10 +113,6 @@ Coverage delta vs main:
 **To check coverage locally:**
 
 ```bash
-# Frontend
-npm run test:coverage
-# Open coverage/index.html in browser
-
 # Backend
 dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 # Coverage percentage shown in console
@@ -158,21 +120,20 @@ dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 
 **To identify gaps:**
 ```bash
-# Frontend: Examine coverage/index.html, click on files
-# Backend: Look for red uncovered lines in IDE (right-click project → "Analyze Code Coverage")
+# Look for red uncovered lines in IDE (right-click project → "Analyze Code Coverage")
 ```
 
 ## Test Maintenance
 
 ### Required Test Coverage
 
-**Frontend (React components):**
-- Props validation in tests
+**Blazor UI (bUnit components):**
+- Component parameter binding
 - User interactions (click, input, submit)
 - Conditional renders
-- Error boundary scenarios
+- Error handling
 - Async operations and loading states
-- Routing navigation
+- Navigation
 
 **Backend (ASP.NET services):**
 - All public methods minimum
@@ -183,15 +144,8 @@ dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj
 - Connector registry interactions
 
 ### Test Naming Convention
-```javascript
-// Frontend
-describe('ComponentName', () => {
-  it('should display when data is loaded', () => { });
-  it('should handle error state', () => { });
-  it('should call handler on button click', () => { });
-});
-
-// Backend
+```csharp
+// Backend and UI tests
 [Fact]
 public void GetDashboard_WhenNoConnectors_ReturnsEmpty() { }
 

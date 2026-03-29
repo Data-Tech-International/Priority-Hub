@@ -7,6 +7,18 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Removed
+- `package.json` deleted — Node.js is not a project dependency; all scripts were pure `dotnet` wrappers.
+- Node.js/npm prerequisites removed from `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, and `docs/`.
+- npm commands replaced with dotnet equivalents in PR template, spec-plan workflow, agent definitions, and MCP integration docs.
+- `node_modules/` entries removed from `.gitignore` and `.dockerignore`.
+- `npm.cmd` and `npx.cmd` auto-approve entries removed from VS Code settings.
+
+### Changed
+- `.release-pleaserc.json` switched from `"type": "node"` to `"type": "simple"`; `backend/Directory.Build.props` is now the sole version source of truth.
+- `backend/Directory.Build.props` comment updated to reflect single source of truth (no `package.json` sync).
+- Completed plan files (`plans/blazor-migration.md`, `plans/ci-agents.md`) annotated to mark historical npm references.
+
 ### Added
 - `IConfigStore` interface abstracting per-user configuration persistence (`PriorityHub.Api/Services/IConfigStore.cs`).
 - `PostgresConfigStore` storing configuration as JSONB with a monotonically increasing `version` column for write auditing (`PriorityHub.Api/Services/PostgresConfigStore.cs`).

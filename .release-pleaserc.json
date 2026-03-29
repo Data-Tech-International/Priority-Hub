@@ -1,14 +1,13 @@
 {
-  "type": "node",
+  "type": "simple",
   "packages": {
     ".": {
-      "changelog-path": "CHANGELOG.md",
-      "version-file": "package.json"
+      "changelog-path": "CHANGELOG.md"
     }
   },
   "extra-files": [
     {
-      "type": "json",
+      "type": "xml",
       "file": "backend/Directory.Build.props",
       "updaters": [
         {

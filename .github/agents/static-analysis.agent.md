@@ -43,38 +43,15 @@ dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj \
 - Complexity warnings
 - Maintainability issues
 
-## Frontend Code Analysis
-
-### Checks
-1. **Console Usage:** Only `console.error()` and `console.warn()` allowed
-   - Detected via regex: `console\.(log|info|debug|trace)`
-   - Severity: Warning
-
-2. **Unused Dependencies:** Identify packages in `package.json` not imported
-   - Tool: `npm ls --depth=0` + semantic analysis
-   - Severity: Info (no fail)
-
-3. **Code Complexity:**
-   - Function length: Max 50 lines (warn), 100 (error)
-   - Nesting depth: Max 3 levels (warn)
-   - File size: Max 300 lines (warn)
-
-### Execution
-```bash
-npm install
-npm run lint  # Detects console, style, and basic complexity
-grep -r "console\." src/ --include="*.jsx" --include="*.js"
-```
-
 ## Architectural Compliance
 
 ### Patterns Enforced
 
-**Frontend (React/Vite)**
-- Components in `src/components/`
-- Pages in `src/pages/`
-- Utilities in `src/lib/`
-- No direct API calls in components (use `src/lib/api.js`)
+**Blazor UI (backend/PriorityHub.Ui/)**
+- Components in `Components/`
+- Pages in `Components/Pages/`
+- Services in `Services/`
+- No direct HTTP calls from components (use DI services)
 - No hardcoded secrets or config in code
 
 **Backend (ASP.NET Core)**
@@ -94,10 +71,9 @@ grep -r "console\." src/ --include="*.jsx" --include="*.js"
 
 ### On Push to main/init
 1. Build backend with Roslyn analyzers → Fail if critical errors
-2. Check frontend console usage → Warn if violations
-3. Generate code metrics → Report complexity scores
-4. Compile analysis results → Create summary report
-5. **Status:** ✅ Pass if no critical issues, ⚠️ Warn if only style/metrics
+2. Generate code metrics → Report complexity scores
+3. Compile analysis results → Create summary report
+4. **Status:** ✅ Pass if no critical issues, ⚠️ Warn if only style/metrics
 
 ### On Pull Request
 1. Same checks as push
@@ -110,7 +86,6 @@ grep -r "console\." src/ --include="*.jsx" --include="*.js"
 ## Configuration References
 - Backend build: [backend/PriorityHub.Api/PriorityHub.Api.csproj](../../backend/PriorityHub.Api/PriorityHub.Api.csproj)
 - StyleCop rules: [backend/stylecop.json](../../backend/stylecop.json)
-- ESLint rules: [.eslintrc.json](../../.eslintrc.json)
 - Workflow: [.github/workflows/static-analysis.yml](../workflows/static-analysis.yml)
 
 ## Metrics Dashboard
@@ -139,9 +114,8 @@ Frontend Code Metrics
 dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj \
   /p:EnforceCodeStyleInBuild=true
 
-# Frontend analysis
-npm run lint  # All checks
-grep -r "console\." src/  # Console only
+# Format check
+dotnet format PriorityHub.sln --verify-no-changes
 ```
 
 ## Escalation

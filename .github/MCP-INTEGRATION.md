@@ -25,7 +25,7 @@ The Priority Hub CI/CD pipeline integrates two MCP (Model Context Protocol) serv
 | Tool | Input | Output | Use Case |
 |------|-------|--------|----------|
 | `query-docs` | Query string | Documentation results | Find best practices, patterns, architecture guides |
-| `resolve-library-id` | Package name (npm/NuGet) | Library metadata, advisories | Link dependencies to CVE databases |
+| `resolve-library-id` | Package name (NuGet) | Library metadata, advisories | Link dependencies to CVE databases |
 | `check-security-advisory` | Library ID + version | Advisory severity, CVSS score | Determine vulnerability impact |
 | `get-remediation-path` | Vulnerable library | Update sequence, breaking changes | Guide dependency updates |
 
@@ -50,7 +50,7 @@ The Priority Hub CI/CD pipeline integrates two MCP (Model Context Protocol) serv
 **Required:** context7  
 **Flow:**
 ```
-1. Run npm audit + dotnet list package --vulnerable
+1. Run dotnet list package --vulnerable
 2. For each vulnerable library:
    a. security.resolve-library-id(package_name)
    b. security.check-security-advisory(lib_id, version)
@@ -61,22 +61,22 @@ The Priority Hub CI/CD pipeline integrates two MCP (Model Context Protocol) serv
 
 **Example (context7 call within workflow):**
 ```yaml
-- name: Check npm package advisories
+- name: Check NuGet package advisories
   env:
     CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
   run: |
-    # npm audit finds vulnerable package "lodash@4.17.20"
+    # dotnet list package --vulnerable finds vulnerable package
     # Agent calls context7:
     curl -X POST https://mcp.context7.com/mcp \
       -H "Authorization: Bearer $CONTEXT7_API_KEY" \
       -d '{
         "method": "check-security-advisory",
         "params": {
-          "library_id": "npm:lodash",
-          "version": "4.17.20"
+          "library_id": "nuget:Newtonsoft.Json",
+          "version": "12.0.3"
         }
       }'
-    # Returns: { severity: "high", cvss: "7.5", remediation: "update to 4.17.21+" }
+    # Returns: { severity: "high", cvss: "7.5", remediation: "update to 13.0.1+" }
 ```
 
 ### Static Analysis Agent
@@ -156,7 +156,6 @@ GitHub tools are auto-available in `actions/github-script@v7`.
 The GitHub MCP server is configured in `.vscode/mcp.json` for local Copilot Chat use.
 
 **Prerequisites:**
-- Node.js 20+ installed (for `npx`)
 - A GitHub Personal Access Token with these scopes:
   - `repo` — full repository access
   - `issues:write` — create and update issues
@@ -179,10 +178,10 @@ The GitHub MCP server is configured in `.vscode/mcp.json` for local Copilot Chat
 
 ### Example 1: Detecting a Critical CVE
 
-**Scenario:** A new CVE is published for a dependency in package.json
+**Scenario:** A new CVE is published for a NuGet dependency
 
 **Agent Flow:**
-1. Security workflow runs `npm audit`, finds vulnerability
+1. Security workflow runs `dotnet list package --vulnerable`, finds vulnerability
 2. Security agent calls `context7.check-security-advisory()`
 3. Returns CVSS 9.8 (critical)
 4. Agent calls `github.create-issue()`:
@@ -261,7 +260,7 @@ The GitHub MCP server is configured in `.vscode/mcp.json` for local Copilot Chat
 
 **Resolution:**
 - Agent skips context7 lookup for unrecognized packages
-- Basic `npm audit` / `dotnet list package` warnings still show
+- Basic `dotnet list package --vulnerable` warnings still show
 
 ### PR Comments Not Appearing
 

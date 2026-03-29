@@ -23,7 +23,7 @@ This file is the workspace-level quick guide for AI agents. Detailed coding rule
 
 ### Versioning and Changelog (Mandatory)
 - Follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html): `MAJOR.MINOR.PATCH`.
-- Keep `package.json` and `backend/Directory.Build.props` at the same version string. Update both in the same commit on every release.
+- `backend/Directory.Build.props` is the single source of truth for the project version. Managed by release-please.
 - Every behavior change requires an entry under `[Unreleased]` in `CHANGELOG.md` (Keep a Changelog format).
 - See `AGENTS.md` for complete versioning and changelog rules.
 
@@ -35,7 +35,6 @@ This file is the workspace-level quick guide for AI agents. Detailed coding rule
 ### Documentation Environment Setup
 - Validate environment before doc updates:
 	- .NET 10 available
-	- Node 20+ available
 - Re-run and confirm documented commands still work:
 	- `dotnet build PriorityHub.sln`
 	- `dotnet test PriorityHub.sln`
@@ -69,7 +68,7 @@ This file is the workspace-level quick guide for AI agents. Detailed coding rule
 - Runtime: same host process; no HTTP boundary between UI and backend
 - Connector model: multiple connector instances can run in parallel
 - Local provider config: managed via Settings UI and stored locally
-- Agent environment: Node 20 + .NET 10 via `.github/copilot-setup-steps.yml`
+- Agent environment: .NET 10 via `.github/copilot-setup-steps.yml`
 
 ## 4) Common Commands
 

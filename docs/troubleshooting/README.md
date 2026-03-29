@@ -18,16 +18,15 @@
 
 ## Script Command Failures
 
-**Symptom:** `npm run dev` or `npm run build` exits with an error.
+**Symptom:** `dotnet watch` or `dotnet build` exits with an error.
 
 **Resolution:**
 
-1. Confirm Node.js 20+ and npm are installed:
+1. Confirm .NET 10 SDK is installed:
    ```bash
-   node --version
-   npm --version
+   dotnet --version
    ```
-2. Use the direct dotnet command as a fallback:
+2. Re-run the command:
    ```bash
    dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
    ```
