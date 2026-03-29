@@ -19,6 +19,9 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `backend/Directory.Build.props` comment updated to reflect single source of truth (no `package.json` sync).
 - Completed plan files (`plans/blazor-migration.md`, `plans/ci-agents.md`) annotated to mark historical npm references.
 
+### Fixed
+- PostgreSQL integration tests: replaced `UntilPortIsAvailable` wait strategy with `pg_isready` command check to avoid "database system is starting up" errors in CI.
+
 ### Added
 - `IConfigStore` interface abstracting per-user configuration persistence (`PriorityHub.Api/Services/IConfigStore.cs`).
 - `PostgresConfigStore` storing configuration as JSONB with a monotonically increasing `version` column for write auditing (`PriorityHub.Api/Services/PostgresConfigStore.cs`).

@@ -18,7 +18,7 @@ public sealed class PostgresConfigStoreIntegrationTests : IAsyncLifetime
         .WithDatabase("priorityhub_test")
         .WithUsername("test")
         .WithPassword("test")
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5432))
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted("pg_isready -h localhost -p 5432"))
         .Build();
 
     private NpgsqlDataSource _dataSource = null!;
