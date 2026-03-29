@@ -28,7 +28,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
     public string ProviderKey => "azure-devops";
     public string DisplayName => "Azure DevOps";
     public string Description => "Aggregate work items from an Azure DevOps project using WIQL.";
-    public string DefaultEmoji => "🔷";
+    public string DefaultEmoji => DefaultEmojiValue;
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -124,7 +124,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
         {
             Id = connection.Id,
             Provider = "azure-devops",
-            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmojiValue : connection.Emoji,
             WorkspaceName = connection.Organization,
             BoardName = connection.Name,
             ProjectName = connection.Project,
@@ -270,13 +270,15 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
             message.Contains("TF400813", StringComparison.OrdinalIgnoreCase);
     }
 
+    private const string DefaultEmojiValue = "🔷";
+
     private static ConnectorResult CreateFailedResult(AzureDevOpsConnection connection, string message)
     {
         var boardConnection = new BoardConnection
         {
             Id = connection.Id,
             Provider = "azure-devops",
-            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? "🔷" : connection.Emoji,
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmojiValue : connection.Emoji,
             WorkspaceName = connection.Organization,
             BoardName = connection.Name,
             ProjectName = connection.Project,
