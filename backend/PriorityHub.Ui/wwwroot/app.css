@@ -1466,3 +1466,46 @@ textarea {
     background-color: color-mix(in srgb, currentColor 12%, transparent);
     color: inherit;
 }
+
+/* ── App footer ── */
+
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 8px;
+  padding: 16px 24px;
+  font-size: 0.8rem;
+  color: rgba(35, 31, 32, 0.55);
+  border-top: 1px solid rgba(14, 45, 73, 0.08);
+  margin-top: auto;
+}
+
+.app-footer__sep {
+  color: rgba(14, 45, 73, 0.25);
+  user-select: none;
+}
+
+.app-footer__link {
+  color: var(--dti-navy);
+  opacity: 0.65;
+  text-decoration: none;
+}
+
+.app-footer__link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .app-footer__sep {
+    display: none;
+  }
+}
