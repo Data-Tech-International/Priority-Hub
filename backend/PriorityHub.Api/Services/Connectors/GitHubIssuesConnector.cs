@@ -94,6 +94,8 @@ public sealed class GitHubIssuesConnector(HttpClient httpClient) : IConnector
                     AgeDays = DaysSince(issue.TryGetProperty("updated_at", out var updatedElement) ? updatedElement.GetString() : null),
                     BlockerCount = tags.Any(label => label.Equals("blocked", StringComparison.OrdinalIgnoreCase)) ? 1 : 0,
                     DueInDays = null,
+                    TargetDate = null,
+                    IsBlocked = tags.Any(label => label.Equals("blocked", StringComparison.OrdinalIgnoreCase)),
                     Tags = tags
                 });
             }

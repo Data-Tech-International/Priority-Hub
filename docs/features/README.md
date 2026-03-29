@@ -12,6 +12,49 @@ The dashboard aggregates work items from all configured connectors into a single
 - **Connector health** – each provider's connection status is visible at the top of the dashboard.
 - **Filtering** – filter items by provider, label, or status using the toolbar.
 
+## Blocked Items & Target Dates
+
+### Blocked flag
+
+An item is considered **blocked** when the underlying provider signals that work cannot proceed:
+
+| Provider | Blocked signal |
+|----------|---------------|
+| Azure DevOps | State contains "block" |
+| Jira | Status name contains "block" |
+| Trello | Card has a label named "blocked" |
+| Microsoft Tasks | Task status is "waitingOnOthers" |
+| GitHub Issues | Issue has a label named "blocked" |
+
+Blocked items receive a **+6 priority score boost** so they surface near the top of the queue for triage, and are shown with a red "Blocked" pill and a left-border tint on the card.
+
+### Target date
+
+When a provider exposes a due/target date it is stored as `TargetDate` (`DateTimeOffset?`) on the work item and shown on the card as:
+
+- The formatted date (e.g. "Jan 15, 2026")
+- A countdown badge:
+  - **Overdue** – red pill when past the date
+  - **N days left (≤ 7)** – amber pill when due within a week
+  - **N days left (> 7)** – subtle badge otherwise
+
+| Provider | Target date source |
+|----------|-------------------|
+| Azure DevOps | `Microsoft.VSTS.Scheduling.TargetDate` |
+| Jira | `fields.duedate` |
+| Trello | `card.due` |
+| Microsoft Tasks | `dueDateTime.dateTime` |
+| GitHub Issues | — (no native target date) |
+
+### Dashboard filters
+
+The filter bar exposes two new filters:
+
+- **Blocked** – All / Blocked only / Not blocked
+- **Target date** – All / Has target date / No target date / Overdue / Due within 7 days
+
+The **Provider** single-select has been replaced with a multi-select **Connectors** filter that dynamically shows only the connectors that appear in the current live data.
+
 ## Supported Connectors
 
 | Connector | Auth method | Query language |
@@ -38,6 +81,7 @@ Score = Impact × 4
       + min(AgeDays, 10)          ← age contribution capped at 10
       + BlockerCount × 4
       + DueDateWeight             ← bonus for items due within 14 days
+      + (IsBlocked ? 6 : 0)      ← boost blocked items for triage
       − Effort × 2
 ```
 
@@ -54,6 +98,7 @@ Clamped to the range **0–100**.
 | BlockerCount | ≥0 | Number of blocker/dependency relationships |
 | DueDateWeight | 0–10 | Bonus applied when `DueInDays` is ≤ 14 |
 | Effort | 1–10 | Derived from story points (ADO) or fixed default per provider |
+| IsBlocked | bool | +6 bonus when the item is flagged as blocked |
 
 ### Priority Bands
 

@@ -153,4 +153,20 @@ public sealed class GitHubIssuesConnectorTests
         Assert.Equal(0, GitHubIssuesConnector.DaysSince(null));
         Assert.Equal(0, GitHubIssuesConnector.DaysSince("garbage"));
     }
+
+    // ── IsBlocked ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IsBlocked_WhenBlockedLabelPresent_ReturnsTrue()
+    {
+        var tags = new List<string> { "enhancement", "blocked" };
+        Assert.Contains("blocked", tags, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void IsBlocked_WhenNoBlockedLabel_ReturnsFalse()
+    {
+        var tags = new List<string> { "enhancement", "feature" };
+        Assert.DoesNotContain("blocked", tags, StringComparer.OrdinalIgnoreCase);
+    }
 }
