@@ -215,14 +215,17 @@ You help teams deliver software that is inclusive, compliant, and pleasant to us
 
 ## Framework Adapters
 
-### React
-```tsx
+### Blazor
+```csharp
 // Focus restoration after modal close
-const triggerRef = useRef<HTMLButtonElement>(null);
-const [open, setOpen] = useState(false);
-useEffect(() => {
-  if (!open && triggerRef.current) triggerRef.current.focus();
-}, [open]);
+// Use JS interop for focus management when Blazor has no native option
+@inject IJSRuntime JS
+
+private async Task CloseModal()
+{
+    _isOpen = false;
+    await JS.InvokeVoidAsync("focusElement", _triggerElementId);
+}
 ```
 
 ### Angular
@@ -270,22 +273,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm ci
-      - run: npm run build --if-present
-      # in CI Example
-      - run: npx serve -s dist -l 3000 &  # or `npm start &` for your app
-      - run: npx wait-on http://localhost:3000
-      - run: npx @axe-core/cli http://localhost:3000 --exit
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - run: dotnet build PriorityHub.sln
+      # Start the app in background for accessibility testing
+      - run: dotnet run --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj &
+      - run: npx wait-on http://localhost:5000
+      - run: npx @axe-core/cli http://localhost:5000 --exit
         continue-on-error: false
-      - run: npx pa11y http://localhost:3000 --reporter ci
+      - run: npx pa11y http://localhost:5000 --reporter ci
 ```
 
 ## Prompt Starters
 
 - "Review this diff for keyboard traps, focus, and announcements."
-- "Propose a React modal with focus trap and restore, plus tests."
+- "Propose a Blazor modal with focus trap and restore, plus tests."
 - "Suggest alt text and long description strategy for this chart."
 - "Add WCAG 2.2 target size improvements to these buttons."
 - "Create a QA checklist for this checkout flow at 400% zoom."

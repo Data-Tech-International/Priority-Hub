@@ -6,23 +6,7 @@ target: vscode
 
 # Coding Standards Agent
 
-**Responsibility:** Enforce consistent code style and formatting across the frontend (JavaScript/React) and backend (.NET/C#) codebases.
-
-## Frontend (JavaScript/React)
-
-### Rules
-- **ESLint violations** are reported as warnings if style-only, errors if affecting correctness
-- **Console usage:** Only `console.error()` and `console.warn()` are allowed; `console.log()` and `console.info()` trigger warnings
-- **Unused variables:** Flagged unless prefixed with `_` (e.g., `_unused`)
-- **Equality:** Strict equality (`===`) required; loose equality (`==`) is an error
-- **Indentation:** 2 spaces (enforced)
-- **Quotes:** Single quotes preferred with escape exception allowed
-- **Semicolons:** Required at statement ends
-- **Arrow functions and async:** Proper usage enforced by ESLint rules
-
-### Auto-Fix Capability
-- On PR: Agent comments with suggestion: *"Run `npm run lint:fix` locally to auto-fix style issues"*
-- Can be invoked via PR comment: `@copilot fix-style`
+**Responsibility:** Enforce consistent code style and formatting across the Blazor UI and backend (.NET/C#) codebases.
 
 ## Backend (.NET/C#)
 
@@ -42,10 +26,9 @@ target: vscode
 ## Workflow Behavior
 
 ### On Push to main/init
-1. Run ESLint on frontend
-2. Run `dotnet format --verify-no-changes` on backend
-3. Fail if errors found (non-style issues)
-4. Warn if only style violations
+1. Run `dotnet format --verify-no-changes` on all projects
+2. Fail if errors found (non-style issues)
+3. Warn if only style violations
 
 ### On Pull Request
 1. Same checks as push
@@ -56,7 +39,6 @@ target: vscode
 3. **Required status:** Can be configured as required before merge (optional)
 
 ## Configuration References
-- Frontend: [../../.eslintrc.json](../../.eslintrc.json)
 - Backend: [../../backend/stylecop.json](../../backend/stylecop.json)
 - Workflow: [../workflows/coding-standards.yml](../workflows/coding-standards.yml)
 

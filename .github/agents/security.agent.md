@@ -10,17 +10,12 @@ target: vscode
 
 ## Vulnerability Detection
 
-### Frontend Dependencies (npm)
-- **Audit Level:** Moderate (flags moderate and high/critical issues)
-- **Command:** `npm audit --audit-level=moderate`
+### Backend Dependencies (.NET)
+- **Command:** `dotnet list package --vulnerable`
 - **Escalation:**
   - **Critical/High CVEs:** FAIL workflow, create GitHub security advisory issue
   - **Moderate:** Warn in PR comment, suggest update path
   - **Low:** Log only, no PR comment
-
-### Backend Dependencies (.NET)
-- **Command:** `dotnet list package --vulnerable`
-- **Escalation:** Same as frontend
 - **Auto-remediation:** Suggest `dotnet package update` commands for vulnerable packages
 
 ## Secret Scanning
@@ -62,13 +57,12 @@ curl -X POST https://mcp.context7.com/mcp \
 ## Workflow Behavior
 
 ### On Push to main/init
-1. Run `npm audit` (frontend)
-2. Run `dotnet list package --vulnerable` (backend)
-3. Run TruffleHog secret scanner across all files
-4. **Fail workflow if:**
+1. Run `dotnet list package --vulnerable` (backend)
+2. Run TruffleHog secret scanner across all files
+3. **Fail workflow if:**
    - Critical or high CVEs detected
    - Verified secrets found
-5. **Warn if:** Moderate vulnerabilities detected
+4. **Warn if:** Moderate vulnerabilities detected
 
 ### On Pull Request
 1. Same checks as push
@@ -80,7 +74,6 @@ curl -X POST https://mcp.context7.com/mcp \
 3. Block merge if critical issues
 
 ## Configuration References
-- Audit config: [package.json](../../package.json)
 - Backend NuGet: [backend/PriorityHub.Api/PriorityHub.Api.csproj](../../backend/PriorityHub.Api/PriorityHub.Api.csproj)
 - MCP config: [.github/mcp-config.json](../mcp-config.json)
 - Workflow: [.github/workflows/security.yml](../workflows/security.yml)
@@ -116,9 +109,6 @@ curl -X POST https://mcp.context7.com/mcp \
 
 **To manually audit locally:**
 ```bash
-# Frontend
-npm audit
-
 # Backend
 dotnet list package --vulnerable backend/PriorityHub.Api/PriorityHub.Api.csproj
 

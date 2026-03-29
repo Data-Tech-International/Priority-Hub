@@ -5,6 +5,8 @@
 **Date:** March 2026  
 **Owner:** Development team
 
+> **Note:** This plan was written when the project had a React frontend. Node.js/npm references below are historical; the project now uses .NET exclusively (see #41).
+
 ---
 
 ## Overview

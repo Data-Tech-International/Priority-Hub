@@ -49,14 +49,14 @@ jobs:
               `5. Update documentation and usage notes.\n` +
               `6. Run local verification and CI workflows.\n\n` +
               `## Candidate file groups\n` +
-              `- Frontend: src/**\n` +
+              `- UI: backend/PriorityHub.Ui/**\n` +
               `- Backend: backend/PriorityHub.Api/**\n` +
-              `- Tests: src/**/*.test.*, backend/PriorityHub.Api.Tests/**\n` +
-              `- Documentation: README.md, plans/**\n\n` +
+              `- Tests: backend/PriorityHub.Api.Tests/**, backend/PriorityHub.Ui.Tests/**\n` +
+              `- Documentation: README.md, docs/**, plans/**\n\n` +
               `## Verification checklist\n` +
-              `- [ ] npm run lint\n` +
-              `- [ ] npm run test\n` +
-              `- [ ] npm run test:coverage\n` +
+              `- [ ] dotnet format PriorityHub.sln --verify-no-changes\n` +
+              `- [ ] dotnet build PriorityHub.sln\n` +
+              `- [ ] dotnet test PriorityHub.sln\n` +
               `- [ ] dotnet build backend/PriorityHub.Api/PriorityHub.Api.csproj\n` +
               `- [ ] dotnet test backend/PriorityHub.Api.Tests/PriorityHub.Api.Tests.csproj\n\n` +
               `## Notes from specification\n\n` +

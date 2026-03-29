@@ -7,7 +7,6 @@ This section describes the development and contribution processes for Priority H
 ### Prerequisites
 
 - .NET 10 SDK
-- Node.js 20+ and npm
 - Docker (for the local PostgreSQL container)
 
 ### Bootstrap (fresh clone)
@@ -21,7 +20,7 @@ cp backend/PriorityHub.Ui/appsettings.Development.example.json \
 docker compose up -d
 
 # 3. Start the application with hot reload
-npm run dev
+dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run
 ```
 
 The application auto-applies pending schema migrations on startup in Development.
@@ -43,7 +42,7 @@ After a fresh bootstrap:
 
 - [ ] `appsettings.Development.json` copied from the example file.
 - [ ] `docker compose ps` shows `postgres` in a healthy state.
-- [ ] `npm run dev` starts without errors.
+- [ ] `dotnet watch --project backend/PriorityHub.Ui/PriorityHub.Ui.csproj run` starts without errors.
 - [ ] Navigating to `http://localhost:5000` shows the login page.
 - [ ] Signing in, adding a connector, and restarting the app persists the connector.
 
@@ -77,7 +76,7 @@ Priority Hub follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) 
 | MINOR | New backward-compatible features |
 | PATCH | Backward-compatible bug fixes |
 
-**Version synchronization rule:** `package.json` and `backend/Directory.Build.props` must always carry the same version string. Update both in the same commit when cutting a release.
+**Version synchronization rule:** `backend/Directory.Build.props` is the single source of truth for the project version. Managed by release-please.
 
 ## Changelog Maintenance
 

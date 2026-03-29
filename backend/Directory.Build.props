@@ -1,8 +1,8 @@
 <Project>
 
   <!--
-    Version is kept in sync with the root package.json "version" field.
-    Update both files together for every release following Semantic Versioning.
+    This is the single source of truth for the project version.
+    Managed by release-please. Follows Semantic Versioning.
   -->
   <PropertyGroup>
     <Version>0.2.0</Version>
