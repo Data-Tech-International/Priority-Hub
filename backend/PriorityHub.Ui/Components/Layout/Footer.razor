@@ -1,0 +1,25 @@
+@using System.Reflection
+
+<footer class="app-footer">
+    <span class="app-footer__version">v@(Version)</span>
+    <span class="app-footer__sep" aria-hidden="true">|</span>
+    <a class="app-footer__link"
+       href="https://github.com/Data-Tech-International/Priority-Hub/issues"
+       target="_blank"
+       rel="noopener noreferrer">Feedback</a>
+    <span class="app-footer__sep" aria-hidden="true">|</span>
+    <span class="app-footer__copy">&copy; 2026 Data Tech International</span>
+    <span class="app-footer__sep" aria-hidden="true">|</span>
+    <a class="app-footer__link"
+       href="https://github.com/Data-Tech-International/Priority-Hub/blob/main/LICENSE"
+       target="_blank"
+       rel="noopener noreferrer">MIT License</a>
+</footer>
+
+@code {
+    private static string Version { get; } =
+        Assembly.GetEntryAssembly()
+                ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion
+                ?? "unknown";
+}
