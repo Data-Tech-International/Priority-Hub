@@ -8,6 +8,23 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Settings tab icons**: each tab (Connectors, Account, Export, Security) now shows an emoji icon
+- **Settings tab keyboard navigation**: arrow keys (←/→), Home, and End move focus between tabs; matches WAI-ARIA tab pattern
+- **Collapsible connector sections**: provider sections are collapsed by default; clicking the header expands/collapses and shows a connection-count summary in the collapsed state
+- **Remove confirmation**: clicking "Remove" on a connection now shows a browser confirmation dialog before deleting
+- **Inline field validation**: text and password fields show error messages immediately on change, not only on save
+- **Unsaved changes indicator**: an "Unsaved changes" badge appears in the save footer whenever edits have not yet been saved
+- **Loading spinner**: initial config load shows an animated spinner instead of plain text
+- **Save button spinner**: the Save button shows an animated spinner while saving
+- **Dismissible status messages**: the status banner now includes a dismiss (✕) button
+
+### Changed
+- Status banner uses distinct error (red) vs. info (blue) styling based on outcome
+- "Add connection" button moved inside each expanded connector section (below the connection list)
+- Settings tab buttons use ARIA roles (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`)
+- Tab panel containers use `role="tabpanel"` with matching `aria-labelledby`
+- Validation error `<small>` elements include `role="alert"` for screen-reader announcement
+
 - Footer with app version, feedback link, copyright, and license information
 - **Connector instance emoji**: each connector connection now has a user-selectable emoji field (`emoji` in JSON config)
 - **Default emojis per connector type**: 🔷 Azure DevOps, 🐙 GitHub, 📋 Jira, 📌 Trello, ✅ Microsoft Tasks, 📧 Outlook Flagged Mail
@@ -24,8 +41,6 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Emoji displayed in provider section headers on the Settings page
 - Legacy config without an `emoji` field falls back to the connector type's default (no errors)
 - Emoji field validation rejects strings with more than one grapheme cluster
-
-### Added
 - `TargetDate` (`DateTimeOffset?`) and `IsBlocked` (`bool`) fields to `WorkItem` model
 - Azure DevOps: `TargetDate` from `Microsoft.VSTS.Scheduling.TargetDate`; `IsBlocked` from blocked state
 - Jira: `TargetDate` from `fields.duedate`; `IsBlocked` from blocked status
