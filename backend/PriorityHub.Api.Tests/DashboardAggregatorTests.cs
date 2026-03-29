@@ -141,6 +141,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         public string ProviderKey => "jira";
         public string DisplayName => "Stub Jira";
         public string Description => "Test stub";
+        public string DefaultEmoji => "📋";
         public ConnectorFieldSpec[] ConfigFields => [];
 
         public Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken)
@@ -161,6 +162,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         public string ProviderKey => key;
         public string DisplayName => "Stub";
         public string Description => "Stub";
+        public string DefaultEmoji => "🔷";
         public ConnectorFieldSpec[] ConfigFields => [];
         public List<BoardConnection> BoardConnections { get; } = [];
 

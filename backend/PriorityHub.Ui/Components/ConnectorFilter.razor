@@ -43,7 +43,7 @@
                         <input type="checkbox"
                                checked="@SelectedConnectors.Contains(connector)"
                                @onchange="() => ToggleConnector(connector)" />
-                        <span>@WorkItemRanker.FormatProviderName(connector)</span>
+                        <span>@WorkItemRanker.GetProviderEmoji(connector) @WorkItemRanker.FormatProviderName(connector)</span>
                     </label>
                 }
             }
@@ -66,7 +66,7 @@
     private string Label => SelectedConnectors.Count == 0
         ? "All connectors"
         : SelectedConnectors.Count == 1
-            ? WorkItemRanker.FormatProviderName(SelectedConnectors[0])
+            ? $"{WorkItemRanker.GetProviderEmoji(SelectedConnectors[0])} {WorkItemRanker.FormatProviderName(SelectedConnectors[0])}"
             : $"Connectors ({SelectedConnectors.Count})";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

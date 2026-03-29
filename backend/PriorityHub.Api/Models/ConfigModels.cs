@@ -40,6 +40,7 @@ public sealed class AzureDevOpsConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "🔷";
     public string Organization { get; set; } = string.Empty;
     public string Project { get; set; } = string.Empty;
     public string PersonalAccessToken { get; set; } = string.Empty;
@@ -51,6 +52,7 @@ public sealed class JiraConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "📋";
     public string BaseUrl { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string ApiToken { get; set; } = string.Empty;
@@ -62,6 +64,7 @@ public sealed class GitHubConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "🐙";
     public string Owner { get; set; } = string.Empty;
     public string Repository { get; set; } = string.Empty;
     public string PersonalAccessToken { get; set; } = string.Empty;
@@ -73,6 +76,7 @@ public sealed class TrelloConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "📌";
     public string BoardId { get; set; } = string.Empty;
     public string ApiKey { get; set; } = string.Empty;
     public string Token { get; set; } = string.Empty;
@@ -83,6 +87,7 @@ public sealed class MicrosoftTasksConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "✅";
     public string TaskListName { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
 }
@@ -91,6 +96,7 @@ public sealed class OutlookFlaggedMailConnection
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "📧";
     public string FolderId { get; set; } = string.Empty;
     public string MaxResults { get; set; } = "100";
     public bool Enabled { get; set; } = true;

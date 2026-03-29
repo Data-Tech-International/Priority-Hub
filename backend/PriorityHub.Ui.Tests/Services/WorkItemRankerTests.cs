@@ -236,4 +236,35 @@ public class WorkItemRankerTests
         Assert.Contains("5", result);
         Assert.Contains("left", result);
     }
+
+    [Theory]
+    [InlineData("azure-devops", "🔷")]
+    [InlineData("github", "🐙")]
+    [InlineData("jira", "📋")]
+    [InlineData("trello", "📌")]
+    [InlineData("microsoft-tasks", "✅")]
+    [InlineData("outlook-flagged-mail", "📧")]
+    public void GetProviderEmoji_ReturnsExpectedEmoji(string provider, string expected)
+    {
+        Assert.Equal(expected, WorkItemRanker.GetProviderEmoji(provider));
+    }
+
+    [Fact]
+    public void GetProviderEmoji_UnknownProvider_ReturnsFallback()
+    {
+        var result = WorkItemRanker.GetProviderEmoji("unknown-provider");
+        Assert.False(string.IsNullOrEmpty(result));
+    }
+
+    [Fact]
+    public void Rank_EmojiFromBoard_PropagatesToRankedWorkItem()
+    {
+        var item = MakeItem("1");
+        var board = new BoardConnection { Id = "board-1", BoardName = "Board", ProjectName = "Proj", Emoji = "🚀" };
+
+        var result = _ranker.Rank([item], [board], []);
+
+        Assert.Single(result);
+        Assert.Equal("🚀", result[0].Emoji);
+    }
 }

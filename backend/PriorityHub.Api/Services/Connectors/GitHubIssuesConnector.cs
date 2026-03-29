@@ -9,6 +9,7 @@ public sealed class GitHubIssuesConnector(HttpClient httpClient) : IConnector
     public string ProviderKey => "github";
     public string DisplayName => "GitHub Issues";
     public string Description => "Aggregate issues from a GitHub repository using a query filter.";
+    public string DefaultEmoji => "🐙";
     public ConnectorFieldSpec[] ConfigFields =>
     [
         new("name", "Connection name"),
@@ -32,6 +33,7 @@ public sealed class GitHubIssuesConnector(HttpClient httpClient) : IConnector
         {
             Id = connection.Id,
             Provider = ProviderKey,
+            Emoji = string.IsNullOrWhiteSpace(connection.Emoji) ? DefaultEmoji : connection.Emoji,
             WorkspaceName = connection.Owner,
             BoardName = connection.Name,
             ProjectName = connection.Repository,

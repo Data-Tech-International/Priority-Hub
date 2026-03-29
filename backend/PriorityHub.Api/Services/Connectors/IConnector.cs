@@ -13,6 +13,7 @@ public interface IConnector
     string ProviderKey { get; }
     string DisplayName { get; }
     string Description { get; }
+    string DefaultEmoji { get; }
     ConnectorFieldSpec[] ConfigFields { get; }
 
     Task<ConnectorResult> FetchConnectionAsync(
