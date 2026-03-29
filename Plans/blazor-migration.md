@@ -4,6 +4,8 @@
 **Date:** March 2026
 **Owner:** Development team
 
+> **Note:** This plan was written during the Vite + React era. Node.js/npm references below are historical; the project now uses .NET exclusively (see #41).
+
 ---
 
 ## Goal

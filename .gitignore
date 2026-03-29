@@ -1,7 +1,3 @@
-node_modules/
-dist/
-dist-server/
-coverage/
 .env
 .env.local
 config/providers.local.json
