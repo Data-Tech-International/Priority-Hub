@@ -1,0 +1,37 @@
+{
+  "type": "node",
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "version-file": "package.json"
+    }
+  },
+  "extra-files": [
+    {
+      "type": "json",
+      "file": "backend/Directory.Build.props",
+      "updaters": [
+        {
+          "type": "xml",
+          "xpath": "//Version",
+          "version-key": "."
+        },
+        {
+          "type": "xml",
+          "xpath": "//AssemblyVersion",
+          "version-key": "."
+        },
+        {
+          "type": "xml",
+          "xpath": "//FileVersion",
+          "version-key": "."
+        },
+        {
+          "type": "xml",
+          "xpath": "//InformationalVersion",
+          "version-key": "."
+        }
+      ]
+    }
+  ]
+}
