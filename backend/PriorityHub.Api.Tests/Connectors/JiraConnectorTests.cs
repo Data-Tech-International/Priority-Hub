@@ -107,4 +107,30 @@ public sealed class JiraConnectorTests
     {
         Assert.Null(JiraConnector.DueInDays(null));
     }
+
+    // ── TargetDate ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ParseTargetDate_ValidDate_ReturnsDateTimeOffset()
+    {
+        var date = DateTimeOffset.UtcNow.AddDays(5).ToString("O");
+        var result = JiraConnector.ParseTargetDate(date);
+        Assert.NotNull(result);
+        Assert.True(result.Value > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public void ParseTargetDate_NullOrInvalid_ReturnsNull()
+    {
+        Assert.Null(JiraConnector.ParseTargetDate(null));
+        Assert.Null(JiraConnector.ParseTargetDate("not-a-date"));
+    }
+
+    // ── IsBlocked ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapStatus_BlockedStatus_MapsToBlocked()
+    {
+        Assert.Equal("blocked", JiraConnector.MapStatus("Blocked"));
+    }
 }

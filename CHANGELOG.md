@@ -7,6 +7,23 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- `TargetDate` (`DateTimeOffset?`) and `IsBlocked` (`bool`) fields to `WorkItem` model
+- Azure DevOps: `TargetDate` from `Microsoft.VSTS.Scheduling.TargetDate`; `IsBlocked` from blocked state
+- Jira: `TargetDate` from `fields.duedate`; `IsBlocked` from blocked status
+- Trello: `TargetDate` from `card.due`; `IsBlocked` from "blocked" label
+- Microsoft Tasks: `TargetDate` from `dueDateTime`; `IsBlocked` from "waitingOnOthers" status
+- GitHub Issues: `IsBlocked` from "blocked" label
+- Dashboard Blocked filter: All / Blocked only / Not blocked
+- Dashboard Target date filter: All / Has target date / No target date / Overdue / Due within 7 days
+- "Blocked" pill and target date countdown displayed on work item cards
+- `.is-blocked` CSS class and warm background tint on blocked item cards
+- Multi-select Connectors filter (dynamic from live board connections)
+
+### Changed
+- Priority scoring formula now includes `IsBlocked` boost (+6 points)
+- Provider single-select filter replaced with multi-select Connectors filter
+
 ### Removed
 - `package.json` deleted — Node.js is not a project dependency; all scripts were pure `dotnet` wrappers.
 - Node.js/npm prerequisites removed from `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, and `docs/`.

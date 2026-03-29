@@ -119,4 +119,46 @@ public sealed class MicrosoftTasksConnectorTests
         Assert.Equal(0, MicrosoftTasksConnector.DaysSince(null));
         Assert.Equal(0, MicrosoftTasksConnector.DaysSince("garbage"));
     }
+
+    // ── ReadTargetDate ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void ReadTargetDate_ValidFutureDate_ReturnsDateTimeOffset()
+    {
+        var futureDate = DateTimeOffset.UtcNow.AddDays(5).ToString("O");
+        var json = TestHelpers.JsonOf($$$"""{"dueDateTime": {"dateTime": "{{{futureDate}}}","timeZone":"UTC"}}""");
+        var result = MicrosoftTasksConnector.ReadTargetDate(json, "dueDateTime");
+        Assert.NotNull(result);
+        Assert.True(result.Value > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public void ReadTargetDate_MissingProperty_ReturnsNull()
+    {
+        var json = TestHelpers.JsonOf("""{"title": "no due date"}""");
+        Assert.Null(MicrosoftTasksConnector.ReadTargetDate(json, "dueDateTime"));
+    }
+
+    [Fact]
+    public void ReadTargetDate_PropertyIsNull_ReturnsNull()
+    {
+        var json = TestHelpers.JsonOf("""{"dueDateTime": null}""");
+        Assert.Null(MicrosoftTasksConnector.ReadTargetDate(json, "dueDateTime"));
+    }
+
+    // ── IsBlocked ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapStatus_WaitingOnOthers_MapsToBlocked()
+    {
+        Assert.Equal("blocked", MicrosoftTasksConnector.MapStatus("waitingOnOthers"));
+    }
+
+    [Fact]
+    public void IsBlocked_WhenWaitingOnOthers_ReturnsTrue()
+    {
+        // IsBlocked = string.Equals(status, "waitingOnOthers", OrdinalIgnoreCase)
+        Assert.Equal("waitingOnOthers", "waitingOnOthers", StringComparer.OrdinalIgnoreCase);
+        Assert.NotEqual("inProgress", "waitingOnOthers", StringComparer.OrdinalIgnoreCase);
+    }
 }

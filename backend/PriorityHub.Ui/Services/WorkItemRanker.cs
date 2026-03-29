@@ -37,6 +37,7 @@ public sealed class WorkItemRanker
                 + Math.Min(item.AgeDays, 10)
                 + item.BlockerCount * 4
                 + DueDateWeight(item.DueInDays)
+                + (item.IsBlocked ? 6 : 0)
                 - item.Effort * 2,
                 0, 100);
 
@@ -92,6 +93,29 @@ public sealed class WorkItemRanker
         "maintain" => "Maintain",
         _ => band
     };
+
+    /// <summary>
+    /// Returns the target date formatted for display in local time (e.g. "Jan 15, 2026").
+    /// Returns an empty string when <paramref name="targetDate"/> is null.
+    /// </summary>
+    public static string FormatTargetDate(DateTimeOffset? targetDate)
+        => targetDate is null ? string.Empty : targetDate.Value.ToLocalTime().ToString("MMM d, yyyy");
+
+    /// <summary>
+    /// Returns a human-readable string describing how many days remain until <paramref name="targetDate"/>,
+    /// or an overdue message if the date has passed.
+    /// </summary>
+    public static string FormatDaysLeft(DateTimeOffset? targetDate)
+    {
+        if (targetDate is null) return string.Empty;
+        var days = DaysUntil(targetDate.Value);
+        if (days < 0) return $"Overdue by {-days} day{(-days == 1 ? "" : "s")}";
+        if (days == 0) return "Due today";
+        return $"{days} day{(days == 1 ? "" : "s")} left";
+    }
+
+    internal static int DaysUntil(DateTimeOffset target)
+        => (int)Math.Round((target - DateTimeOffset.UtcNow).TotalDays);
 }
 
 public sealed record RankedWorkItem(

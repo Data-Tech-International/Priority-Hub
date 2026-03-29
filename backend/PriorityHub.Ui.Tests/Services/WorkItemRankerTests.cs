@@ -9,13 +9,13 @@ public class WorkItemRankerTests
 
     private static WorkItem MakeItem(string id, int impact = 5, int urgency = 5, int confidence = 5,
         int effort = 3, int ageDays = 5, int blockerCount = 0, int? dueInDays = null, bool isNew = false,
-        string boardId = "board-1", string status = "planned") =>
+        string boardId = "board-1", string status = "planned", bool isBlocked = false, DateTimeOffset? targetDate = null) =>
         new()
         {
             Id = id, BoardId = boardId, Title = $"Item {id}", Status = status,
             Impact = impact, Urgency = urgency, Confidence = confidence,
             Effort = effort, AgeDays = ageDays, BlockerCount = blockerCount,
-            DueInDays = dueInDays, IsNew = isNew
+            DueInDays = dueInDays, IsNew = isNew, IsBlocked = isBlocked, TargetDate = targetDate
         };
 
     private static BoardConnection MakeBoard(string id = "board-1") =>
@@ -172,5 +172,68 @@ public class WorkItemRankerTests
         Assert.Equal("Focus next", WorkItemRanker.FormatPriorityBand("focus"));
         Assert.Equal("Maintain", WorkItemRanker.FormatPriorityBand("maintain"));
         Assert.Equal("custom", WorkItemRanker.FormatPriorityBand("custom"));
+    }
+
+    [Fact]
+    public void Rank_BlockedItem_ScoresHigherThanUnblocked()
+    {
+        var blocked = MakeItem("blocked", isBlocked: true);
+        var unblocked = MakeItem("unblocked", isBlocked: false);
+        var boards = new[] { MakeBoard() };
+
+        var result = _ranker.Rank([blocked, unblocked], boards, []);
+
+        Assert.True(result.First(i => i.Item.Id == "blocked").Score >
+                    result.First(i => i.Item.Id == "unblocked").Score);
+    }
+
+    [Fact]
+    public void Rank_BlockedItem_BandAssignment()
+    {
+        // Score with isBlocked: 5*4 + 5*3 + 5*1.5 + 5 + 0*4 + 4 + 6 - 3*2 = 20+15+7.5+5+4+6-6 = 51.5 => maintain
+        var blocked = MakeItem("blocked", isBlocked: true);
+        // Score without: 20+15+7.5+5+4 - 6 = 45.5 => maintain
+        var unblocked = MakeItem("unblocked", isBlocked: false);
+        var boards = new[] { MakeBoard() };
+
+        var resultBlocked = _ranker.Rank([blocked], boards, []);
+        var resultUnblocked = _ranker.Rank([unblocked], boards, []);
+
+        // Both maintain band, but blocked scores higher
+        Assert.Equal("maintain", resultBlocked[0].Band);
+        Assert.Equal("maintain", resultUnblocked[0].Band);
+        Assert.Equal(6.0, resultBlocked[0].Score - resultUnblocked[0].Score, 0.01);
+    }
+
+    [Fact]
+    public void FormatDaysLeft_NullReturnsEmpty()
+    {
+        Assert.Equal(string.Empty, WorkItemRanker.FormatDaysLeft(null));
+    }
+
+    [Fact]
+    public void FormatDaysLeft_OverdueReturnsNegativeMessage()
+    {
+        var pastDate = DateTimeOffset.UtcNow.AddDays(-3);
+        var result = WorkItemRanker.FormatDaysLeft(pastDate);
+        Assert.Contains("Overdue", result);
+        Assert.Contains("3", result);
+    }
+
+    [Fact]
+    public void FormatDaysLeft_TodayReturnsDueToday()
+    {
+        var today = DateTimeOffset.UtcNow;
+        var result = WorkItemRanker.FormatDaysLeft(today);
+        Assert.Equal("Due today", result);
+    }
+
+    [Fact]
+    public void FormatDaysLeft_FutureReturnsCountdown()
+    {
+        var future = DateTimeOffset.UtcNow.AddDays(5);
+        var result = WorkItemRanker.FormatDaysLeft(future);
+        Assert.Contains("5", result);
+        Assert.Contains("left", result);
     }
 }

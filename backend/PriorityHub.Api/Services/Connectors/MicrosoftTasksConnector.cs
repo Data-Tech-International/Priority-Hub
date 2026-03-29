@@ -203,6 +203,8 @@ public sealed class MicrosoftTasksConnector(HttpClient httpClient) : IConnector
             AgeDays = DaysSince(ageSource),
             BlockerCount = string.Equals(status, "waitingOnOthers", StringComparison.OrdinalIgnoreCase) ? 1 : 0,
             DueInDays = dueInDays,
+            TargetDate = ReadTargetDate(task, "dueDateTime"),
+            IsBlocked = string.Equals(status, "waitingOnOthers", StringComparison.OrdinalIgnoreCase),
             Tags = tags.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
     }
@@ -236,6 +238,15 @@ public sealed class MicrosoftTasksConnector(HttpClient httpClient) : IConnector
     internal static bool IsCompletedStatus(string? value)
     {
         return string.Equals(value, "completed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static DateTimeOffset? ReadTargetDate(JsonElement item, string propertyName)
+    {
+        if (!item.TryGetProperty(propertyName, out var propertyElement) || propertyElement.ValueKind != JsonValueKind.Object)
+            return null;
+        if (!propertyElement.TryGetProperty("dateTime", out var dateTimeElement))
+            return null;
+        return DateTimeOffset.TryParse(dateTimeElement.GetString(), out var parsed) ? parsed : null;
     }
 
     internal static int? ReadDateOffsetDays(JsonElement item, string propertyName)
