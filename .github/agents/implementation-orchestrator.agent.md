@@ -1,7 +1,6 @@
 ---
-name: implementation-orchestrator
-description: "Agent responsible for creating implementation branches, draft PRs, and coordinating handoff from approved plans to coding agents"
-target: vscode
+name: 'implementation-orchestrator'
+description: 'Agent responsible for creating implementation branches, draft PRs, and coordinating handoff from approved plans to coding agents'
 ---
 
 # Implementation Orchestrator Agent

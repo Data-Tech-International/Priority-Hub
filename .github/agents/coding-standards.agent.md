@@ -1,7 +1,6 @@
 ---
-name: coding-standards
-description: "Agent responsible for enforcing coding standards via linting and formatting checks"
-target: vscode
+name: 'coding-standards'
+description: 'Agent responsible for enforcing coding standards via linting and formatting checks'
 ---
 
 # Coding Standards Agent

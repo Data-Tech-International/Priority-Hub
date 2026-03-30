@@ -1,7 +1,6 @@
 ---
-name: spec-planner
-description: "Agent responsible for turning approved specifications into actionable implementation plans"
-target: vscode
+name: 'spec-planner'
+description: 'Agent responsible for turning approved specifications into actionable implementation plans'
 ---
 
 # Spec Planner Agent
