@@ -1269,6 +1269,135 @@ textarea {
   color: rgba(35, 31, 32, 0.7);
 }
 
+/* Import file input */
+.import-file-label {
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+}
+
+.import-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.import-error {
+  margin: 12px 0 0;
+  color: #c0392b;
+  font-size: 0.9rem;
+}
+
+/* Import preview */
+.import-preview {
+  margin-top: 24px;
+  border: 1px solid rgba(14, 45, 73, 0.12);
+  border-radius: 20px;
+  padding: 22px;
+  background: rgba(248, 250, 252, 0.74);
+}
+
+.import-preview h3 {
+  margin: 0 0 14px;
+}
+
+.import-preview-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.import-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.import-badge-add {
+  background: #d4edda;
+  color: #155724;
+}
+
+.import-badge-update {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.import-badge-unchanged {
+  background: rgba(14, 45, 73, 0.07);
+  color: rgba(35, 31, 32, 0.65);
+}
+
+.import-masked-warning {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #856404;
+}
+
+.import-masked-warning code {
+  font-family: monospace;
+}
+
+.import-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(14, 45, 73, 0.08);
+}
+
+.import-preview-table th {
+  font-weight: 600;
+  color: rgba(35, 31, 32, 0.7);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.import-action {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.import-action-add {
+  background: #d4edda;
+  color: #155724;
+}
+
+.import-action-update {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.import-action-unchanged {
+  background: rgba(14, 45, 73, 0.07);
+  color: rgba(35, 31, 32, 0.65);
+}
+
+.import-preview-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* ──────────────────────────────────────────────
    Tag filter dropdown
 ────────────────────────────────────────────── */

@@ -29,3 +29,16 @@ window.PriorityHub.focusById = function (id) {
     var el = document.getElementById(id);
     if (el) el.focus();
 };
+
+window.PriorityHub.downloadFile = function (filename, contentType, base64Content) {
+    var bytes = Uint8Array.from(atob(base64Content), function (c) { return c.charCodeAt(0); });
+    var blob = new Blob([bytes], { type: contentType });
+    var url = URL.createObjectURL(blob);
+    var anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+};
