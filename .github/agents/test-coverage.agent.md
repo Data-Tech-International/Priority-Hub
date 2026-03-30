@@ -1,7 +1,6 @@
 ---
-name: test-coverage
-description: "Agent responsible for test execution, coverage collection, and coverage threshold enforcement"
-target: vscode
+name: 'test-coverage'
+description: 'Agent responsible for test execution, coverage collection, and coverage threshold enforcement'
 ---
 
 # Test Coverage Agent
