@@ -32,6 +32,7 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 - **Login page heading border**: removed visible border on the "Sign in to access your unified priority dashboard." heading
+- **Checkbox alignment in filter dropdowns**: checkboxes in Connector and Tag filter dropdowns are now vertically centred with the label text (`margin: 0`, fixed size, `accent-color` for brand styling)
 
 - Footer with app version, feedback link, copyright, and license information
 - **Connector instance emoji**: each connector connection now has a user-selectable emoji field (`emoji` in JSON config)
