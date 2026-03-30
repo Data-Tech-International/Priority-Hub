@@ -1,7 +1,6 @@
 ---
-name: security
-description: "Agent responsible for vulnerability detection, dependency auditing, and secret scanning"
-target: vscode
+name: 'security'
+description: 'Agent responsible for vulnerability detection, dependency auditing, and secret scanning'
 ---
 
 # Security Agent

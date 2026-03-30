@@ -1,7 +1,6 @@
 ---
-name: static-analysis
-description: "Agent responsible for code quality metrics, complexity analysis, and static code inspection"
-target: vscode
+name: 'static-analysis'
+description: 'Agent responsible for code quality metrics, complexity analysis, and static code inspection'
 ---
 
 # Static Code Analysis Agent
