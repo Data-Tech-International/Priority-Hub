@@ -8,6 +8,10 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Export download**: the "Download configuration" button now triggers a real browser file download (`priority-hub-config.json`) via JS interop instead of only updating the status message.
+- **Import connector configuration**: a new "Import connector configuration" card on the Import / Export tab lets users upload a previously exported JSON file (max 1 MB). Connections are merged with upsert logic: connections matched by `id` are updated; new `id`s are inserted; connections absent from the file are left unchanged. Preferences (manual ordering) are never overwritten.
+- **Import preview**: after selecting a file, a preview panel summarises how many connections will be added, updated, or unchanged, lists each affected connection by name and provider, and warns if masked secrets (`********`) are detected.
+- **Import / Export tab renamed**: the "Export" settings tab is now labelled "Import / Export".
 - **Configurable authentication providers**: each auth provider section in `appsettings.json` now supports an `Enabled` boolean flag. Microsoft and GitHub default to `true`; Google, Facebook, Jira, Trello, and Yandex default to `false`.
 - **Dynamic login page**: the login page now reads the `Enabled` flag from configuration and renders only enabled provider buttons, hiding disabled providers entirely.
 - **503 guard on disabled provider endpoints**: hitting `/api/auth/login/{provider}` for a disabled provider returns `503 Service Unavailable` regardless of whether `ClientId`/`ClientSecret` are set.

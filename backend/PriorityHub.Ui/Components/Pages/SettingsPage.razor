@@ -250,7 +250,7 @@
             </div>
         }
 
-        @* ── Export tab ── *@
+        @* ── Import / Export tab ── *@
         @if (_activeTab == "export")
         {
             <div class="settings-tab-content" id="tabpanel-export" role="tabpanel" aria-labelledby="tab-export">
@@ -275,7 +275,90 @@
                             Download configuration
                         </button>
                     </article>
+
+                    <article class="export-card">
+                        <h3>Import connector configuration</h3>
+                        <p>
+                            Upload a previously exported JSON file to merge connector settings. Existing connections
+                            are matched by ID — matching IDs are updated, new IDs are added, and connections missing
+                            from the file are left unchanged.
+                        </p>
+                        <label class="import-file-label">
+                            <InputFile OnChange="HandleImportFileSelected" accept=".json" class="import-file-input" />
+                            <span class="refresh-button" aria-hidden="true">Choose file…</span>
+                        </label>
+                        @if (_importError is not null)
+                        {
+                            <p class="import-error" role="alert">@_importError</p>
+                        }
+                    </article>
                 </div>
+
+                @if (_importPreview is not null)
+                {
+                    <div class="import-preview" role="region" aria-label="Import preview">
+                        <h3>Import preview</h3>
+
+                        <div class="import-preview-summary">
+                            @{ var addCount = _importPreview.Count(p => p.Action == ImportAction.Add); }
+                            @{ var updateCount = _importPreview.Count(p => p.Action == ImportAction.Update); }
+                            @{ var unchangedCount = _importPreview.Count(p => p.Action == ImportAction.Unchanged); }
+                            @if (addCount > 0)
+                            {
+                                <span class="import-badge import-badge-add">@addCount added</span>
+                            }
+                            @if (updateCount > 0)
+                            {
+                                <span class="import-badge import-badge-update">@updateCount updated</span>
+                            }
+                            @if (unchangedCount > 0)
+                            {
+                                <span class="import-badge import-badge-unchanged">@unchangedCount unchanged</span>
+                            }
+                        </div>
+
+                        @if (_importPreview.Any(p => p.HasMaskedSecrets))
+                        {
+                            <p class="import-masked-warning">
+                                ⚠️ Secrets (PATs, API tokens) from the exported file may be masked with <code>********</code>
+                                and will overwrite current values. Re-enter secrets after import.
+                            </p>
+                        }
+
+                        <table class="import-preview-table" aria-label="Connections to be imported">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Connection</th>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in _importPreview)
+                                {
+                                    <tr>
+                                        <td>@entry.Name</td>
+                                        <td>@entry.Provider</td>
+                                        <td>
+                                            <span class="import-action import-action-@entry.Action.ToString().ToLowerInvariant()">
+                                                @entry.Action.ToString().ToLowerInvariant()
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <div class="import-preview-actions">
+                            <button class="refresh-button" type="button" @onclick="ApplyImportAsync">
+                                Confirm import
+                            </button>
+                            <button class="remove-button" type="button" @onclick="CancelImport">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
         }
 
@@ -336,7 +419,7 @@
     [
         ("connectors", "🔌", "Connectors"),
         ("account", "👤", "Account"),
-        ("export", "📤", "Export"),
+        ("export", "📤", "Import / Export"),
         ("security", "🔒", "Security"),
     ];
 
@@ -352,6 +435,11 @@
     private bool _checkingCache = false;
     private bool _hasCachedPassphrase = false;
     private bool _clearingCache = false;
+
+    // Import state
+    private List<ImportPreviewEntry>? _importPreview;
+    private ProviderConfiguration? _pendingImportConfig;
+    private string? _importError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -765,9 +853,11 @@
             PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
         });
 
+        var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
+        await JS.InvokeVoidAsync("PriorityHub.downloadFile", "priority-hub-config.json", "application/json", base64);
+
         _statusMessage = "Configuration exported (check your downloads).";
         _statusIsError = false;
-        await Task.CompletedTask;
     }
 
     private static string MaskSecret(string value) =>
@@ -794,7 +884,201 @@
             _ => providerKey
         };
 
+    private async Task HandleImportFileSelected(InputFileChangeEventArgs e)
+    {
+        _importPreview = null;
+        _pendingImportConfig = null;
+        _importError = null;
+
+        var file = e.File;
+        if (file.Size > 1 * 1024 * 1024)
+        {
+            _importError = "File is too large. The maximum size is 1 MB.";
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 1 * 1024 * 1024);
+            var imported = await System.Text.Json.JsonSerializer.DeserializeAsync<ProviderConfiguration>(
+                stream,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+            if (imported is null)
+            {
+                _importError = "The file could not be parsed as a valid configuration.";
+                return;
+            }
+
+            _pendingImportConfig = imported;
+            _importPreview = ComputeImportPreview(imported);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _importError = "Invalid JSON. Please upload a file exported from Priority Hub.";
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Could not read the file: {ex.Message}";
+        }
+    }
+
+    private List<ImportPreviewEntry> ComputeImportPreview(ProviderConfiguration imported)
+    {
+        var preview = new List<ImportPreviewEntry>();
+
+        void AddEntries<T>(List<T> importedList, string providerLabel, string providerKey,
+            Func<T, string> getId, Func<T, string> getName, Func<T, bool> hasMaskedSecrets)
+            where T : class
+        {
+            // Build existing ID set once for this provider
+            var existingIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var jsonElem in _config.GetConnections(providerKey))
+            {
+                if (jsonElem.TryGetProperty("id", out var idProp))
+                    existingIds.Add(idProp.GetString() ?? "");
+            }
+
+            foreach (var item in importedList)
+            {
+                var id = getId(item);
+                var name = getName(item);
+                var action = existingIds.Contains(id) ? ImportAction.Update : ImportAction.Add;
+                preview.Add(new ImportPreviewEntry(name, providerLabel, action, hasMaskedSecrets(item)));
+            }
+        }
+
+        AddEntries(imported.AzureDevOps, "Azure DevOps", "azure-devops",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            c => IsMasked(c.PersonalAccessToken));
+        AddEntries(imported.GitHub, "GitHub", "github",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            c => IsMasked(c.PersonalAccessToken));
+        AddEntries(imported.Jira, "Jira", "jira",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            c => IsMasked(c.ApiToken));
+        AddEntries(imported.MicrosoftTasks, "Microsoft Tasks", "microsoft-tasks",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            _ => false);
+        AddEntries(imported.OutlookFlaggedMail, "Outlook Flagged Mail", "outlook-flagged-mail",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            _ => false);
+        AddEntries(imported.Trello, "Trello", "trello",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            c => IsMasked(c.ApiKey) || IsMasked(c.Token));
+
+        // Match by ID → Update; new ID → Add. No deep diff per spec.
+
+        return preview;
+    }
+
+    private Task ApplyImportAsync()
+    {
+        if (_pendingImportConfig is null) return Task.CompletedTask;
+
+        var imported = _pendingImportConfig;
+
+        // Upsert each provider list
+        UpsertConnections(imported.AzureDevOps, "azureDevOps");
+        UpsertConnections(imported.GitHub, "github");
+        UpsertConnections(imported.Jira, "jira");
+        UpsertConnections(imported.MicrosoftTasks, "microsoftTasks");
+        UpsertConnections(imported.OutlookFlaggedMail, "outlookFlaggedMail");
+        UpsertConnections(imported.Trello, "trello");
+
+        // Preferences are intentionally skipped to preserve manual ordering.
+
+        _hasUnsavedChanges = true;
+        _importPreview = null;
+        _pendingImportConfig = null;
+        _importError = null;
+        _statusMessage = "Import applied. Review the changes below and click \"Save connector configuration\" to persist.";
+        _statusIsError = false;
+
+        return Task.CompletedTask;
+    }
+
+    private void UpsertConnections<T>(List<T> importedList, string configKey) where T : class
+    {
+        if (!_connections.TryGetValue(configKey, out var currentList))
+        {
+            currentList = [];
+            _connections[configKey] = currentList;
+        }
+
+        // Build an index of current connections by id
+        var idIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < currentList.Count; i++)
+        {
+            if (currentList[i].TryGetValue("id", out var idVal) && idVal is string idStr)
+                idIndex[idStr] = i;
+        }
+
+        var importedJson = System.Text.Json.JsonSerializer.Serialize(importedList, System.Text.Json.JsonSerializerOptions.Web);
+        var importedDicts = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(
+            importedJson, System.Text.Json.JsonSerializerOptions.Web) ?? [];
+
+        foreach (var dict in importedDicts)
+        {
+            if (dict.TryGetValue("id", out var idObj) && idObj is System.Text.Json.JsonElement idElem
+                && idElem.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var id = idElem.GetString() ?? "";
+                if (idIndex.TryGetValue(id, out var idx))
+                {
+                    // Merge: update each field from the imported dict into the existing entry
+                    var existing = currentList[idx];
+                    foreach (var kvp in dict)
+                        existing[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    // Insert: normalize JsonElement values to primitives
+                    var normalized = NormalizeDict(dict);
+                    currentList.Add(normalized);
+                }
+            }
+        }
+    }
+
+    private static Dictionary<string, object?> NormalizeDict(Dictionary<string, object?> dict)
+    {
+        var result = new Dictionary<string, object?>();
+        foreach (var kvp in dict)
+        {
+            result[kvp.Key] = kvp.Value is System.Text.Json.JsonElement elem
+                ? elem.ValueKind switch
+                {
+                    System.Text.Json.JsonValueKind.String => elem.GetString(),
+                    System.Text.Json.JsonValueKind.True => (object?)true,
+                    System.Text.Json.JsonValueKind.False => false,
+                    System.Text.Json.JsonValueKind.Number => elem.GetInt32(),
+                    _ => elem.ToString()
+                }
+                : kvp.Value;
+        }
+        return result;
+    }
+
+    private void CancelImport()
+    {
+        _importPreview = null;
+        _pendingImportConfig = null;
+        _importError = null;
+    }
+
+    private static bool IsMasked(string value) =>
+        !string.IsNullOrWhiteSpace(value) && value.All(c => c == '*');
+
     private sealed record ConnectorMeta(
         string ProviderKey, string DisplayName, string Description,
         string DefaultEmoji, ConnectorFieldSpec[] ConfigFields);
+
+    private enum ImportAction { Add, Update, Unchanged }
+
+    private sealed record ImportPreviewEntry(
+        string Name, string Provider, ImportAction Action, bool HasMaskedSecrets);
 }
