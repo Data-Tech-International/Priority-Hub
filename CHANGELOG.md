@@ -8,6 +8,10 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Configurable authentication providers**: each auth provider section in `appsettings.json` now supports an `Enabled` boolean flag. Microsoft and GitHub default to `true`; Google, Facebook, Jira, Trello, and Yandex default to `false`.
+- **Dynamic login page**: the login page now reads the `Enabled` flag from configuration and renders only enabled provider buttons, hiding disabled providers entirely.
+- **503 guard on disabled provider endpoints**: hitting `/api/auth/login/{provider}` for a disabled provider returns `503 Service Unavailable` regardless of whether `ClientId`/`ClientSecret` are set.
+
 - **Login authentication providers**: Jira, Yandex, Trello, Google, and Facebook added as OAuth sign-in options on the login page
 - **Provider icons on login page**: each authentication provider button now displays an inline SVG icon next to the provider name
 - **Settings tab icons**: each tab (Connectors, Account, Export, Security) now shows an emoji icon

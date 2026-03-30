@@ -395,7 +395,13 @@ app.MapGet("/api/auth/me", (ClaimsPrincipal user) => Results.Ok(CreateAuthUser(u
 
 app.MapGet("/api/auth/login/microsoft", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Microsoft")))
+    var section = configuration.GetSection("Authentication:Microsoft");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Microsoft authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Microsoft authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -405,7 +411,13 @@ app.MapGet("/api/auth/login/microsoft", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/github", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:GitHub")))
+    var section = configuration.GetSection("Authentication:GitHub");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("GitHub authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("GitHub authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -415,7 +427,13 @@ app.MapGet("/api/auth/login/github", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/google", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Google")))
+    var section = configuration.GetSection("Authentication:Google");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Google authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Google authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -425,7 +443,13 @@ app.MapGet("/api/auth/login/google", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/facebook", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Facebook")))
+    var section = configuration.GetSection("Authentication:Facebook");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Facebook authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Facebook authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -435,7 +459,13 @@ app.MapGet("/api/auth/login/facebook", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/jira", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Jira")))
+    var section = configuration.GetSection("Authentication:Jira");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Jira authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Jira authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -445,7 +475,13 @@ app.MapGet("/api/auth/login/jira", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/trello", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Trello")))
+    var section = configuration.GetSection("Authentication:Trello");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Trello authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Trello authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -455,7 +491,13 @@ app.MapGet("/api/auth/login/trello", (IConfiguration configuration) =>
 
 app.MapGet("/api/auth/login/yandex", (IConfiguration configuration) =>
 {
-    if (!IsProviderConfigured(configuration.GetSection("Authentication:Yandex")))
+    var section = configuration.GetSection("Authentication:Yandex");
+    if (!IsProviderEnabled(section))
+    {
+        return Results.Problem("Yandex authentication is not enabled.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (!IsProviderConfigured(section))
     {
         return Results.Problem("Yandex authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -549,6 +591,11 @@ static AuthUser CreateAuthUser(ClaimsPrincipal user)
 static bool IsProviderConfigured(IConfigurationSection section)
 {
     return !string.IsNullOrWhiteSpace(section["ClientId"]) && !string.IsNullOrWhiteSpace(section["ClientSecret"]);
+}
+
+static bool IsProviderEnabled(IConfigurationSection section)
+{
+    return section.GetValue("Enabled", false);
 }
 
 static string GetUserIdentityKey(ClaimsPrincipal user)
