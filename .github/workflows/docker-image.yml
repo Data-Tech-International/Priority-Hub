@@ -63,3 +63,18 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Compute short SHA
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: short-sha
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger deployment in Priority-Hub-DTI
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          repository: Data-Tech-International/Priority-Hub-DTI
+          event-type: deploy-image
+          client-payload: >-
+            {"image_tag": "${{ steps.short-sha.outputs.tag }}", "ref": "${{ github.sha }}"}

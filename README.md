@@ -268,6 +268,10 @@ psql -h <db-host> -U priorityhub -d priorityhub -f backend/PriorityHub.Api/Data/
 
 **Database backups:** Back up your PostgreSQL database before deploying a new image that includes schema migrations.
 
+## Azure Production Deployment
+
+Production deployment to Azure is managed in a separate private repository ([Priority-Hub-DTI](https://github.com/Data-Tech-International/Priority-Hub-DTI)). The `docker-image.yml` workflow in this repo automatically triggers the deployment pipeline in Priority-Hub-DTI after pushing a new image to GHCR on main.
+
 ## Build, Test, And Quality Checks
 
 Run from repository root.
