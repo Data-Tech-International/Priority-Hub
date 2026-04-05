@@ -233,4 +233,80 @@ public sealed class DashboardAggregatorTests : IDisposable
 
         Assert.Single(dashboard.WorkItems);
     }
+
+    // ── Phase 3: per-connection token resolution for linked accounts ──────────
+
+    [Fact]
+    public async Task BuildAsync_WithPerConnectionToken_UsesLinkedAccountToken()
+    {
+        var store = CreateStore();
+
+        // Set up an Outlook connection with a linked account ID.
+        var config = new ProviderConfiguration
+        {
+            OutlookFlaggedMail =
+            [
+                new OutlookFlaggedMailConnection { Id = "outlook-1", Name = "Linked Outlook", Enabled = true, LinkedAccountId = "linked-acc-1" }
+            ]
+        };
+        await store.SaveAsync(UserId, config, CancellationToken.None);
+
+        string? capturedToken = null;
+        var captureConnector = new TokenCapturingConnector("outlook-flagged-mail", token => capturedToken = token);
+        var registry = new ConnectorRegistry([captureConnector]);
+        var aggregator = new DashboardAggregator(store, registry);
+
+        var oauthTokensByProvider = new Dictionary<string, string> { ["outlook-flagged-mail"] = "primary-token" };
+        var oauthTokensByConnectionId = new Dictionary<string, string> { ["outlook-1"] = "linked-account-token" };
+
+        await aggregator.BuildAsync(UserId, oauthTokensByProvider, oauthTokensByConnectionId, CancellationToken.None);
+
+        // The linked account's connection-specific token must be used, not the primary token.
+        Assert.Equal("linked-account-token", capturedToken);
+    }
+
+    [Fact]
+    public async Task BuildAsync_WithoutLinkedAccountToken_FallsBackToProviderToken()
+    {
+        var store = CreateStore();
+
+        // Outlook connection with no linked account ID.
+        var config = new ProviderConfiguration
+        {
+            OutlookFlaggedMail =
+            [
+                new OutlookFlaggedMailConnection { Id = "outlook-2", Name = "Primary Outlook", Enabled = true, LinkedAccountId = "" }
+            ]
+        };
+        await store.SaveAsync(UserId, config, CancellationToken.None);
+
+        string? capturedToken = null;
+        var captureConnector = new TokenCapturingConnector("outlook-flagged-mail", token => capturedToken = token);
+        var registry = new ConnectorRegistry([captureConnector]);
+        var aggregator = new DashboardAggregator(store, registry);
+
+        var oauthTokensByProvider = new Dictionary<string, string> { ["outlook-flagged-mail"] = "primary-token" };
+        var oauthTokensByConnectionId = new Dictionary<string, string>(); // empty
+
+        await aggregator.BuildAsync(UserId, oauthTokensByProvider, oauthTokensByConnectionId, CancellationToken.None);
+
+        Assert.Equal("primary-token", capturedToken);
+    }
+
+    private sealed class TokenCapturingConnector(string providerKey, Action<string?> captureToken) : IConnector
+    {
+        public string ProviderKey => providerKey;
+        public string DisplayName => "Capture";
+        public string Description => "Captures the OAuth token passed to FetchConnectionAsync.";
+        public string DefaultEmoji => "🔍";
+        public ConnectorFieldSpec[] ConfigFields => [];
+
+        public Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken)
+        {
+            captureToken(oauthToken);
+            var result = new ConnectorResult();
+            result.BoardConnections.Add(new BoardConnection { SyncStatus = "connected" });
+            return Task.FromResult(result);
+        }
+    }
 }

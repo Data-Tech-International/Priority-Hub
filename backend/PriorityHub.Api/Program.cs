@@ -250,6 +250,150 @@ app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
     return Results.Ok(new { ok = true });
 }).RequireAuthorization();
 
+// ── Linked Microsoft Account endpoints ──
+
+app.MapGet("/api/auth/link/microsoft", (HttpContext httpContext, IConfiguration configuration) =>
+{
+    var section = configuration.GetSection("Authentication:Microsoft");
+    if (!IsProviderConfigured(section))
+    {
+        return Results.Problem("Microsoft authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var userId = GetUserIdentityKey(httpContext.User);
+    var tenantId = section["TenantId"] ?? "common";
+    var clientId = section["ClientId"]!;
+    var redirectUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/api/auth/link/microsoft/callback";
+    var state = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(userId));
+
+    var authorizationUrl = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize" +
+        $"?client_id={Uri.EscapeDataString(clientId)}" +
+        $"&response_type=code" +
+        $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+        $"&scope={Uri.EscapeDataString("openid profile email User.Read Tasks.Read Mail.Read offline_access")}" +
+        $"&prompt=select_account" +
+        $"&state={Uri.EscapeDataString(state)}";
+
+    return Results.Redirect(authorizationUrl);
+}).RequireAuthorization();
+
+app.MapGet("/api/auth/link/microsoft/callback", async (HttpContext httpContext, IConfigStore configStore, IConfiguration configuration, CancellationToken cancellationToken) =>
+{
+    var code = httpContext.Request.Query["code"].ToString();
+    var state = httpContext.Request.Query["state"].ToString();
+    var error = httpContext.Request.Query["error"].ToString();
+
+    if (!string.IsNullOrWhiteSpace(error))
+        return Results.BadRequest(new { error });
+
+    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
+        return Results.BadRequest(new { error = "missing_code" });
+
+    string userId;
+    try
+    {
+        userId = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(state));
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = "invalid_state" });
+    }
+
+    var section = configuration.GetSection("Authentication:Microsoft");
+    var clientId = section["ClientId"];
+    var clientSecret = section["ClientSecret"];
+    var tenantId = section["TenantId"] ?? "common";
+    var redirectUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/api/auth/link/microsoft/callback";
+
+    if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+        return Results.Problem("Microsoft authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    var tokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
+    using var httpClient = new HttpClient();
+    using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+    {
+        Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+            ["code"] = code,
+            ["redirect_uri"] = redirectUri,
+            ["grant_type"] = "authorization_code",
+        })
+    };
+
+    using var tokenResponse = await httpClient.SendAsync(tokenRequest, cancellationToken);
+    if (!tokenResponse.IsSuccessStatusCode)
+        return Results.Problem("Failed to exchange authorization code for tokens.", statusCode: StatusCodes.Status502BadGateway);
+
+    var tokenBody = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+    using var tokenDoc = JsonDocument.Parse(tokenBody);
+
+    var refreshToken = tokenDoc.RootElement.TryGetProperty("refresh_token", out var rtProp)
+        ? rtProp.GetString() ?? string.Empty : string.Empty;
+    var accessToken = tokenDoc.RootElement.TryGetProperty("access_token", out var atProp)
+        ? atProp.GetString() ?? string.Empty : string.Empty;
+
+    if (string.IsNullOrWhiteSpace(refreshToken))
+        return Results.Problem("No refresh token received. Ensure 'offline_access' scope is requested.", statusCode: StatusCodes.Status502BadGateway);
+
+    string displayName = string.Empty, email = string.Empty;
+    if (!string.IsNullOrWhiteSpace(accessToken))
+    {
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var meResponse = await httpClient.SendAsync(meRequest, cancellationToken);
+        if (meResponse.IsSuccessStatusCode)
+        {
+            var meBody = await meResponse.Content.ReadAsStringAsync(cancellationToken);
+            using var meDoc = JsonDocument.Parse(meBody);
+            displayName = meDoc.RootElement.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? string.Empty : string.Empty;
+            email = meDoc.RootElement.TryGetProperty("mail", out var mail) ? mail.GetString() ?? string.Empty
+                : meDoc.RootElement.TryGetProperty("userPrincipalName", out var upn) ? upn.GetString() ?? string.Empty
+                : string.Empty;
+        }
+    }
+
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+    config.LinkedMicrosoftAccounts ??= [];
+
+    var existing = config.LinkedMicrosoftAccounts
+        .FirstOrDefault(a => string.Equals(a.Email, email, StringComparison.OrdinalIgnoreCase));
+    if (existing is not null)
+    {
+        existing.RefreshToken = refreshToken;
+        existing.DisplayName = displayName;
+        existing.LinkedAt = DateTimeOffset.UtcNow;
+    }
+    else
+    {
+        config.LinkedMicrosoftAccounts.Add(new LinkedMicrosoftAccount
+        {
+            DisplayName = displayName,
+            Email = email,
+            RefreshToken = refreshToken,
+        });
+    }
+
+    await configStore.SaveAsync(userId, config, cancellationToken);
+    return Results.Ok(new { ok = true, displayName, email });
+});
+
+app.MapDelete("/api/auth/link/microsoft/{accountId}", async (string accountId, HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
+{
+    var userId = GetUserIdentityKey(httpContext.User);
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+    var account = config.LinkedMicrosoftAccounts.FirstOrDefault(a =>
+        string.Equals(a.Id, accountId, StringComparison.OrdinalIgnoreCase));
+
+    if (account is null)
+        return Results.NotFound(new { error = "Account not found." });
+
+    config.LinkedMicrosoftAccounts.Remove(account);
+    await configStore.SaveAsync(userId, config, cancellationToken);
+    return Results.Ok(new { ok = true });
+}).RequireAuthorization();
+
 app.MapGet("/api/config", async (HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
