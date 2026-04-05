@@ -271,7 +271,7 @@ app.MapGet("/api/auth/link/microsoft", (HttpContext httpContext, IConfiguration 
         $"&response_type=code" +
         $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
         $"&scope={Uri.EscapeDataString("openid profile email User.Read Tasks.Read Mail.Read offline_access")}" +
-        $"&prompt=select_account" +
+        $"&prompt=consent" +
         $"&state={Uri.EscapeDataString(state)}";
 
     return Results.Redirect(authorizationUrl);

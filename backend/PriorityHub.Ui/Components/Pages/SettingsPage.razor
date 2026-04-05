@@ -169,7 +169,7 @@
                                                 </div>
 
                                                 @* Microsoft Account selector for Outlook and Tasks connections *@
-                                                @if (connector.ProviderKey is "outlook-flagged-mail" or "microsoft-tasks" && _config.LinkedMicrosoftAccounts.Count > 0)
+                                                @if (connector.ProviderKey is "outlook-flagged-mail" or "microsoft-tasks")
                                                 {
                                                     var linkedAccountOptions = GetLinkedAccountOptions();
                                                     <div class="config-grid" style="margin-top:8px">

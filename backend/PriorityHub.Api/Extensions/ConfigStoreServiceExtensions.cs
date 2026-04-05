@@ -19,12 +19,16 @@ public static class ConfigStoreServiceExtensions
     /// </summary>
     public static IServiceCollection AddConfigStore(this IServiceCollection services, IConfiguration configuration)
     {
-        // Register Data Protection with a configurable key ring directory (default: config/keys/).
-        var keyRingPath = configuration["DataProtection:KeyRingPath"]
-            ?? Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "config", "keys");
-        services.AddDataProtection()
-            .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
-            .SetApplicationName("PriorityHub");
+        // Register Data Protection with a configurable key ring directory.
+        // Default: config/keys/ at the repository root (2 levels above ContentRootPath,
+        // consistent with LocalConfigStore which locates config/ the same way).
+        // Override with DataProtection:KeyRingPath in appsettings.json or environment variables.
+        services.AddDataProtection(options =>
+        {
+            options.ApplicationDiscriminator = "PriorityHub";
+        })
+        .PersistKeysToFileSystem(new DirectoryInfo(ResolveKeyRingPath(configuration)))
+        .SetApplicationName("PriorityHub");
 
         services.AddSingleton<ICredentialProtector, DataProtectionCredentialProtector>();
 
@@ -70,5 +74,17 @@ public static class ConfigStoreServiceExtensions
         {
             await schemaManager.ApplyAsync();
         }
+    }
+
+    private static string ResolveKeyRingPath(IConfiguration configuration)
+    {
+        var configured = configuration["DataProtection:KeyRingPath"];
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured;
+
+        // Use the content root obtained from the hosting environment path that WebApplication
+        // sets during startup. Fall back to working directory if not yet set.
+        var contentRoot = configuration["ContentRoot"] ?? Directory.GetCurrentDirectory();
+        return Path.GetFullPath(Path.Combine(contentRoot, "..", "..", "config", "keys"));
     }
 }

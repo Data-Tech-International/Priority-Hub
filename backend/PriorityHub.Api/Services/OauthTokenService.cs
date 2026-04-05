@@ -114,7 +114,7 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         {
             if (!accountsById.TryGetValue(linkedAccountId, out var account))
             {
-                logger.LogWarning("Linked account {LinkedAccountId} not found for connection {ConnectionId}.", linkedAccountId, connectionId);
+                logger.LogWarning("Linked account for connection {ConnectionId} not found.", connectionId);
                 continue;
             }
 
