@@ -221,10 +221,70 @@ Fetches flagged (follow-up) email from your Outlook mailbox via the [Microsoft G
 | Connection name | ✔ | Display name shown on the dashboard (e.g., `Flagged Mail`) |
 | Folder ID | optional | Limit the scan to a specific mail folder. Leave blank to scan all folders. |
 | Max results | optional | Maximum number of flagged messages to retrieve (default: `100`). |
+| Microsoft Account | optional | Select a linked Microsoft account to use instead of the primary login account. See [Linked Microsoft Accounts](#linked-microsoft-accounts). |
 
 **Authentication:** This connector requires signing in with Microsoft. No PAT or API token is needed.
 
 **External docs:** [Flag email for follow-up](https://support.microsoft.com/en-us/office/flag-email-messages-for-follow-up-9d0f175f-f3e9-406d-bbf7-9c57e1f781cc) · [Microsoft Graph Messages API](https://learn.microsoft.com/en-us/graph/api/resources/message)
+
+---
+
+### IMAP Flagged Mail
+
+Fetches flagged email from any IMAP-capable email server using implicit TLS (port 993). Supports Gmail, Outlook.com, Yahoo, and other providers.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| Connection name | ✔ | Display name shown on the dashboard (e.g., `Personal Gmail`). |
+| IMAP server | ✔ | Hostname of the IMAP server (e.g., `imap.gmail.com`). |
+| Port | optional | IMAP port (default: `993`). Only implicit TLS (port 993) is supported. |
+| Email address | ✔ | Your email address used to log in to the IMAP server. |
+| Password / App password | ✔ | Account password or app password. Use an app password if 2FA is enabled. |
+| Folder path | optional | IMAP folder to search (default: `INBOX`). |
+| Custom IMAP keywords | optional | Comma-separated list of IMAP keywords to include in addition to `\Flagged` (e.g., `important,followup`). |
+| Max results | optional | Maximum number of messages to retrieve (default: `100`). |
+
+**Common server addresses:**
+
+| Provider | IMAP server | Port |
+|----------|-------------|------|
+| Gmail | `imap.gmail.com` | `993` |
+| Outlook.com | `outlook.office365.com` | `993` |
+| Yahoo | `imap.mail.yahoo.com` | `993` |
+
+**App passwords:** If your email provider requires two-factor authentication, generate an app password and use it instead of your account password:
+- [Gmail app passwords](https://support.google.com/mail/answer/185833)
+- [Outlook.com app passwords](https://support.microsoft.com/en-us/account-billing/using-app-passwords-with-apps-that-don-t-support-two-step-verification-5896ed9b-4263-e681-128a-a6f2979a7944)
+
+**Security note:** All passwords are encrypted at rest using .NET Data Protection API. Only port 993 (implicit TLS) is accepted — plaintext IMAP connections are rejected.
+
+---
+
+## Linked Microsoft Accounts
+
+Users with multiple Microsoft accounts (business and personal) can link additional accounts from **Settings → Account → Linked Microsoft Accounts** without changing their login session.
+
+**How to link an account:**
+
+1. Open **Settings → Account**.
+2. Under **Linked Microsoft Accounts**, click **Link Microsoft Account**.
+3. A Microsoft sign-in page opens with account picker — sign in to the account you want to link.
+4. After completing sign-in, the linked account appears in the list with its display name, email, and linked date.
+
+**Assigning a linked account to a connection:**
+
+1. Open **Settings → Connectors** → expand **Outlook Flagged Mail** or **Microsoft Tasks**.
+2. In the connection editor, locate the **Microsoft Account** dropdown.
+3. Select the linked account (or "Primary (login)" for the default).
+4. Save the configuration.
+
+When a linked account is selected, its refresh token is exchanged for a Microsoft Graph access token at dashboard load time. If the token exchange fails (e.g., after 90 days of inactivity), the connection shows `needs-reauth` and you can re-link the account.
+
+**Removing a linked account:**
+
+1. Open **Settings → Account → Linked Microsoft Accounts**.
+2. Click **Remove** next to the account.
+3. Connections previously assigned to that account will show `needs-reauth` on the next dashboard load.
 
 ---
 

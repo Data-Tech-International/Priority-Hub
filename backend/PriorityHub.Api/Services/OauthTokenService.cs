@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using PriorityHub.Api.Models;
 
 namespace PriorityHub.Api.Services;
 
@@ -85,6 +86,62 @@ public sealed class OauthTokenService(IConfiguration configuration, ILogger<Oaut
         }
 
         return tokens;
+    }
+
+    /// <summary>
+    /// Exchanges the stored refresh token for each linked Microsoft account connection
+    /// that has a <c>LinkedAccountId</c>, returning a dictionary keyed by connection ID.
+    /// Connections whose linked account is missing or whose token exchange fails are
+    /// excluded from the result (the caller falls back to the primary session token or
+    /// shows "needs-reauth").
+    /// </summary>
+    public async Task<Dictionary<string, string>> GetLinkedAccountTokensAsync(
+        ProviderConfiguration config,
+        IReadOnlyDictionary<string, string> connectionIdToLinkedAccountId,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (config.LinkedMicrosoftAccounts.Count == 0 || connectionIdToLinkedAccountId.Count == 0)
+            return result;
+
+        var accountsById = config.LinkedMicrosoftAccounts
+            .ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+
+        var microsoftSection = configuration.GetSection("Authentication:Microsoft");
+
+        foreach (var (connectionId, linkedAccountId) in connectionIdToLinkedAccountId)
+        {
+            if (!accountsById.TryGetValue(linkedAccountId, out var account))
+            {
+                logger.LogWarning("Linked account {LinkedAccountId} not found for connection {ConnectionId}.", linkedAccountId, connectionId);
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(account.RefreshToken))
+            {
+                logger.LogWarning("Linked account {Email} has no refresh token.", account.Email);
+                continue;
+            }
+
+            var tokenResult = await RequestAccessTokenFromRefreshTokenAsync(
+                microsoftSection,
+                account.RefreshToken,
+                MicrosoftGraphScope,
+                cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(tokenResult?.AccessToken))
+            {
+                result[connectionId] = tokenResult.AccessToken;
+                logger.LogDebug("Resolved linked account token for connection {ConnectionId} ({Email}).", connectionId, account.Email);
+            }
+            else
+            {
+                logger.LogWarning("Failed to exchange refresh token for linked account {Email} (connection {ConnectionId}).", account.Email, connectionId);
+            }
+        }
+
+        return result;
     }
 
     private async Task<TokenExchangeResult?> RequestAzureDevOpsTokenAsync(

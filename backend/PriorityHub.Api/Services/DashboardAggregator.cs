@@ -7,10 +7,13 @@ public sealed class DashboardAggregator(
     ConnectorRegistry connectorRegistry)
 {
     public async Task<DashboardPayload> BuildAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, CancellationToken cancellationToken)
+        => await BuildAsync(userId, oauthTokensByProvider, new Dictionary<string, string>(), cancellationToken);
+
+    public async Task<DashboardPayload> BuildAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, IReadOnlyDictionary<string, string> oauthTokensByConnectionId, CancellationToken cancellationToken)
     {
         DashboardPayload? latestSnapshot = null;
 
-        await foreach (var update in StreamAsync(userId, oauthTokensByProvider, cancellationToken))
+        await foreach (var update in StreamAsync(userId, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken))
         {
             latestSnapshot = update.Dashboard;
         }
@@ -18,7 +21,10 @@ public sealed class DashboardAggregator(
         return latestSnapshot ?? new DashboardPayload();
     }
 
-    public async IAsyncEnumerable<DashboardStreamEvent> StreamAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<DashboardStreamEvent> StreamAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, CancellationToken cancellationToken)
+        => StreamAsync(userId, oauthTokensByProvider, new Dictionary<string, string>(), cancellationToken);
+
+    public async IAsyncEnumerable<DashboardStreamEvent> StreamAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, IReadOnlyDictionary<string, string> oauthTokensByConnectionId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var config = await configStore.LoadAsync(userId, cancellationToken);
         var orderedIds = config.Preferences.OrderedItemIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -28,7 +34,7 @@ public sealed class DashboardAggregator(
             GeneratedAt = DateTimeOffset.UtcNow.ToString("O")
         };
 
-        var pendingFetches = BuildPendingFetches(config, oauthTokensByProvider, cancellationToken);
+        var pendingFetches = BuildPendingFetches(config, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken);
         var totalConnections = pendingFetches.Count;
         var completedConnections = 0;
 
@@ -64,7 +70,7 @@ public sealed class DashboardAggregator(
         }
     }
 
-    private List<PendingFetch> BuildPendingFetches(ProviderConfiguration config, IReadOnlyDictionary<string, string> oauthTokensByProvider, CancellationToken cancellationToken)
+    private List<PendingFetch> BuildPendingFetches(ProviderConfiguration config, IReadOnlyDictionary<string, string> oauthTokensByProvider, IReadOnlyDictionary<string, string> oauthTokensByConnectionId, CancellationToken cancellationToken)
     {
         var pendingFetches = new List<PendingFetch>();
 
@@ -78,9 +84,24 @@ public sealed class DashboardAggregator(
 
                 var id = connectionConfig.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? string.Empty : string.Empty;
                 var name = connectionConfig.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? string.Empty : string.Empty;
-                var oauthToken = oauthTokensByProvider.TryGetValue(connector.ProviderKey, out var providerToken)
-                    ? providerToken
+
+                // Phase 3: resolve per-connection token for linked accounts first,
+                // then fall back to provider-level token.
+                string? oauthToken;
+                var linkedAccountId = connectionConfig.TryGetProperty("linkedAccountId", out var lacProp)
+                    ? lacProp.GetString()
                     : null;
+
+                if (!string.IsNullOrWhiteSpace(linkedAccountId) && oauthTokensByConnectionId.TryGetValue(id, out var connToken))
+                {
+                    oauthToken = connToken;
+                }
+                else
+                {
+                    oauthToken = oauthTokensByProvider.TryGetValue(connector.ProviderKey, out var providerToken)
+                        ? providerToken
+                        : null;
+                }
 
                 pendingFetches.Add(new PendingFetch(
                     connector.ProviderKey, id, name,

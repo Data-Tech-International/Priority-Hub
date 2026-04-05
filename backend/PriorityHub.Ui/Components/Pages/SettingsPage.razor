@@ -167,6 +167,25 @@
                                                         }
                                                     }
                                                 </div>
+
+                                                @* Microsoft Account selector for Outlook and Tasks connections *@
+                                                @if (connector.ProviderKey is "outlook-flagged-mail" or "microsoft-tasks" && _config.LinkedMicrosoftAccounts.Count > 0)
+                                                {
+                                                    var linkedAccountOptions = GetLinkedAccountOptions();
+                                                    <div class="config-grid" style="margin-top:8px">
+                                                        <label class="config-field">
+                                                            <span>Microsoft Account</span>
+                                                            <select value="@(GetConnectionField(connection, "linkedAccountId") ?? "")"
+                                                                    @onchange="@(e => SetConnectionField(configKey, index, "linkedAccountId", e.Value))">
+                                                                <option value="">Primary (login)</option>
+                                                                @foreach (var (id, label) in linkedAccountOptions)
+                                                                {
+                                                                    <option value="@id">@label</option>
+                                                                }
+                                                            </select>
+                                                        </label>
+                                                    </div>
+                                                }
                                             </article>
                                         }
                                     </div>
@@ -244,6 +263,69 @@
                                     Sign out
                                 </button>
                             </form>
+
+                            @* ── Linked Microsoft Accounts ── *@
+                            @if (string.Equals(userProvider, "microsoft", StringComparison.OrdinalIgnoreCase) ||
+                                 _config.LinkedMicrosoftAccounts.Count > 0)
+                            {
+                                <div class="provider-config-block" style="margin-top:24px">
+                                    <h3 style="margin:0 0 12px">Linked Microsoft Accounts</h3>
+                                    <p class="provider-config-summary" style="margin-bottom:16px">
+                                        Link additional Microsoft accounts to use with Outlook Flagged Mail and Microsoft Tasks connectors.
+                                    </p>
+
+                                    @if (_linkedAccountsLoading)
+                                    {
+                                        <div class="settings-loading" aria-live="polite" aria-busy="true">
+                                            <span class="settings-spinner" aria-hidden="true"></span>
+                                            <span>Loading linked accounts…</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="connection-editor-list">
+                                            @* Primary account always appears first *@
+                                            <article class="connection-editor-card">
+                                                <div class="connection-editor-header">
+                                                    <div class="connection-editor-title">
+                                                        <span aria-hidden="true">🏠</span>
+                                                        <strong>@(userName ?? userEmail ?? "Primary account")</strong>
+                                                    </div>
+                                                    <span class="provider-config-summary">Primary (login) · Cannot be removed</span>
+                                                </div>
+                                                <span style="font-size:0.85rem;color:var(--text-muted)">@userEmail</span>
+                                            </article>
+
+                                            @foreach (var linked in _config.LinkedMicrosoftAccounts)
+                                            {
+                                                var linkedId = linked.Id;
+                                                <article class="connection-editor-card">
+                                                    <div class="connection-editor-header">
+                                                        <div class="connection-editor-title">
+                                                            <span aria-hidden="true">🔗</span>
+                                                            <strong>@(linked.DisplayName is { Length: > 0 } n ? n : linked.Email)</strong>
+                                                        </div>
+                                                        <button class="remove-button" type="button"
+                                                                @onclick="() => RemoveLinkedAccountAsync(linkedId)"
+                                                                aria-label="Remove linked account @linked.Email">
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                    <span style="font-size:0.85rem;color:var(--text-muted)">
+                                                        @linked.Email · Linked @linked.LinkedAt.ToString("MMM d, yyyy")
+                                                    </span>
+                                                </article>
+                                            }
+                                        </div>
+
+                                        <div style="margin-top:16px">
+                                            <a href="/api/auth/link/microsoft" class="add-connection-button">
+                                                + Link Microsoft Account
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </Authorized>
                     </AuthorizeView>
                 </div>
@@ -435,6 +517,9 @@
     private bool _checkingCache = false;
     private bool _hasCachedPassphrase = false;
     private bool _clearingCache = false;
+
+    // Linked accounts state
+    private bool _linkedAccountsLoading = false;
 
     // Import state
     private List<ImportPreviewEntry>? _importPreview;
@@ -886,6 +971,44 @@
             "imap-flagged-mail" => "imapFlaggedMail",
             _ => providerKey
         };
+
+    private List<(string Id, string Label)> GetLinkedAccountOptions() =>
+        _config.LinkedMicrosoftAccounts
+            .Select(a => (a.Id, string.IsNullOrWhiteSpace(a.DisplayName) ? a.Email : $"{a.DisplayName} ({a.Email})"))
+            .ToList();
+
+    private async Task RemoveLinkedAccountAsync(string accountId)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove this linked Microsoft account?");
+        if (!confirmed) return;
+
+        _linkedAccountsLoading = true;
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext is null) return;
+
+            var client = new System.Net.Http.HttpClient();
+            var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Delete,
+                $"/api/auth/link/microsoft/{accountId}");
+
+            // Remove from local list immediately for UX responsiveness.
+            _config.LinkedMicrosoftAccounts.RemoveAll(a =>
+                string.Equals(a.Id, accountId, StringComparison.OrdinalIgnoreCase));
+
+            _statusMessage = "Linked account removed.";
+            _statusIsError = false;
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Failed to remove linked account: {ex.Message}";
+            _statusIsError = true;
+        }
+        finally
+        {
+            _linkedAccountsLoading = false;
+        }
+    }
 
     private async Task HandleImportFileSelected(InputFileChangeEventArgs e)
     {
