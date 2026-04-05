@@ -53,5 +53,20 @@
       "token": "replace-with-token",
       "enabled": true
     }
+  ],
+  "imapFlaggedMail": [
+    {
+      "id": "imap-gmail",
+      "name": "Personal Gmail",
+      "emoji": "📨",
+      "enabled": true,
+      "imapServer": "imap.gmail.com",
+      "port": "993",
+      "email": "your-email@gmail.com",
+      "password": "<app-password>",
+      "folderPath": "INBOX",
+      "keywords": "",
+      "maxResults": "100"
+    }
   ]
 }
