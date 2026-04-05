@@ -54,7 +54,8 @@ Purpose: implement approved work safely and consistently in Priority Hub (Blazor
 
 ### Documentation Rules
 - Treat `README.md` as the canonical user setup and usage document.
-- Keep detailed user documentation in `docs/` organized by section: features, configuration, processes, troubleshooting.
+- Keep `docs/quick-start.md` up to date whenever a feature is added or changed that affects setup steps, connector fields, dashboard behavior, or the getting-started workflow.
+- Keep detailed user documentation in `docs/` organized by section: quick start, features, configuration, processes, troubleshooting.
 - Keep instructions task-based: prerequisites, steps, expected result, and troubleshooting.
 - Ensure all commands are copy-paste ready and tested in this repository.
 - Keep terminology consistent across README, plans, and UI labels.

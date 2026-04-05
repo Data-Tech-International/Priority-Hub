@@ -337,6 +337,7 @@ Key references:
 
 Full user documentation is in [`docs/`](docs/):
 
+- [Quick Start](docs/quick-start.md) – sign in, add connectors, and start using the dashboard.
 - [Features](docs/features/README.md) – dashboard, priority ordering, and multi-connector model.
 - [Configuration](docs/configuration/README.md) – provider setup and credential management.
 - [Processes](docs/processes/README.md) – versioning, changelog, and contribution workflow.
