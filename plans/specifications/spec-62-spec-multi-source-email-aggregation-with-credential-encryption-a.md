@@ -22,7 +22,7 @@ This specification defines three independently shippable phases:
 
 ## Specification
 
-See [`plans/specifications/spec-multi-source-email-aggregation-with-credential-encryption.md`](plans/specifications/spec-multi-source-email-aggregation-with-credential-encryption.md) for the full specification including requirements, interfaces, data contracts, acceptance criteria, and test strategy.
+See [`plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md`](plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md) for the full specification including requirements, interfaces, data contracts, acceptance criteria, and test strategy.
 
 ## Key Requirements
 

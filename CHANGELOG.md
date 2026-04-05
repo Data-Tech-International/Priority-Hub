@@ -7,6 +7,9 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- **Specification**: multi-source email aggregation with credential encryption and linked Microsoft accounts — full spec added at `plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md` covering Phase 1 (backend credential encryption via .NET Data Protection API), Phase 2 (IMAP flagged-mail connector using MailKit), and Phase 3 (linked Microsoft accounts with per-connection account selection).
+
 ### Changed
 - **Agent definitions normalized**: removed VS Code-specific fields (`tools`, `model`, `target`) from all `.github/agents/*.agent.md` files; normalized quote styles to single quotes and reordered frontmatter (`name` before `description`) to align with GitHub Copilot agent format standards.
 
