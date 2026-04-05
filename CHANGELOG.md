@@ -7,6 +7,18 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- **Specification**: multi-source email aggregation with credential encryption and linked Microsoft accounts — full spec added at `plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md` covering Phase 1 (backend credential encryption via .NET Data Protection API), Phase 2 (IMAP flagged-mail connector using MailKit), and Phase 3 (linked Microsoft accounts with per-connection account selection).
+- **Backend credential encryption (Phase 1)**: all sensitive connector credential fields (`PersonalAccessToken`, `ApiToken`, `ApiKey`, `Token`, `Password`, `RefreshToken`) are now encrypted at rest using .NET Data Protection API with a file-system key ring (`config/keys/`). Both `LocalConfigStore` (file) and `PostgresConfigStore` (PostgreSQL) apply encryption transparently via a new `EncryptingConfigStore` decorator. Existing plaintext configs migrate automatically on the first load+save cycle.
+- **IMAP Flagged Mail connector (Phase 2)**: a new connector (`imap-flagged-mail`) fetches flagged and keyword-tagged messages from any IMAP server over implicit TLS (port 993). Supports Gmail, Outlook.com, Yahoo, and other providers. Configured with IMAP server, email, app password, folder path, custom keywords, and max results. Passwords are encrypted at rest (Phase 1). Uses MailKit.
+- **Linked Microsoft Accounts (Phase 3)**: users can link additional Microsoft accounts from **Settings → Account** without changing their login session. Each linked account's refresh token is stored encrypted and exchanged for a Graph API access token at dashboard load time. Outlook Flagged Mail and Microsoft Tasks connections gain a **Microsoft Account** dropdown to select primary or any linked account. Endpoints: `GET /api/auth/link/microsoft`, `GET /api/auth/link/microsoft/callback`, `DELETE /api/auth/link/microsoft/{accountId}`.
+- **`[SensitiveField]` attribute**: marks string properties for at-rest encryption. Currently applied to `AzureDevOpsConnection.PersonalAccessToken`, `JiraConnection.ApiToken`, `GitHubConnection.PersonalAccessToken`, `TrelloConnection.ApiKey`, `TrelloConnection.Token`, `ImapFlaggedMailConnection.Password`, `LinkedMicrosoftAccount.RefreshToken`.
+- **`config/keys/` excluded from version control**: added to `.gitignore` to prevent accidental commit of Data Protection encryption keys.
+
+### Changed
+- **`DashboardAggregator`**: `BuildPendingFetches` now resolves per-connection OAuth tokens for connections with a `LinkedAccountId`, falling back to the provider-level token for connections without one.
+- **`OauthTokenService`**: added `GetLinkedAccountTokensAsync` to exchange stored linked account refresh tokens for Microsoft Graph access tokens, keyed by connection ID.
+
 ### Changed
 - **Agent definitions normalized**: removed VS Code-specific fields (`tools`, `model`, `target`) from all `.github/agents/*.agent.md` files; normalized quote styles to single quotes and reordered frontmatter (`name` before `description`) to align with GitHub Copilot agent format standards.
 

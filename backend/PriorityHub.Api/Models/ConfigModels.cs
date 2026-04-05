@@ -12,6 +12,8 @@ public sealed class ProviderConfiguration
     public List<MicrosoftTasksConnection> MicrosoftTasks { get; set; } = [];
     public List<OutlookFlaggedMailConnection> OutlookFlaggedMail { get; set; } = [];
     public List<TrelloConnection> Trello { get; set; } = [];
+    public List<ImapFlaggedMailConnection> ImapFlaggedMail { get; set; } = [];
+    public List<LinkedMicrosoftAccount> LinkedMicrosoftAccounts { get; set; } = [];
     public UserPreferences Preferences { get; set; } = new();
 
     /// <summary>
@@ -27,6 +29,7 @@ public sealed class ProviderConfiguration
         "microsoft-tasks" => MicrosoftTasks.Select(c => JsonSerializer.SerializeToElement(c, JsonSerializerOptions.Web)),
         "outlook-flagged-mail" => OutlookFlaggedMail.Select(c => JsonSerializer.SerializeToElement(c, JsonSerializerOptions.Web)),
         "trello" => Trello.Select(c => JsonSerializer.SerializeToElement(c, JsonSerializerOptions.Web)),
+        "imap-flagged-mail" => ImapFlaggedMail.Select(c => JsonSerializer.SerializeToElement(c, JsonSerializerOptions.Web)),
         _ => []
     };
 }
@@ -43,6 +46,7 @@ public sealed class AzureDevOpsConnection
     public string Emoji { get; set; } = "🔷";
     public string Organization { get; set; } = string.Empty;
     public string Project { get; set; } = string.Empty;
+    [SensitiveField]
     public string PersonalAccessToken { get; set; } = string.Empty;
     public string Wiql { get; set; } = "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc";
     public bool Enabled { get; set; } = true;
@@ -55,6 +59,7 @@ public sealed class JiraConnection
     public string Emoji { get; set; } = "📋";
     public string BaseUrl { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    [SensitiveField]
     public string ApiToken { get; set; } = string.Empty;
     public string Jql { get; set; } = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
     public bool Enabled { get; set; } = true;
@@ -67,6 +72,7 @@ public sealed class GitHubConnection
     public string Emoji { get; set; } = "🐙";
     public string Owner { get; set; } = string.Empty;
     public string Repository { get; set; } = string.Empty;
+    [SensitiveField]
     public string PersonalAccessToken { get; set; } = string.Empty;
     public string Query { get; set; } = "is:open assignee:@me";
     public bool Enabled { get; set; } = true;
@@ -78,7 +84,9 @@ public sealed class TrelloConnection
     public string Name { get; set; } = string.Empty;
     public string Emoji { get; set; } = "📌";
     public string BoardId { get; set; } = string.Empty;
+    [SensitiveField]
     public string ApiKey { get; set; } = string.Empty;
+    [SensitiveField]
     public string Token { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
 }
@@ -89,6 +97,7 @@ public sealed class MicrosoftTasksConnection
     public string Name { get; set; } = string.Empty;
     public string Emoji { get; set; } = "✅";
     public string TaskListName { get; set; } = string.Empty;
+    public string LinkedAccountId { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
 }
 
@@ -99,5 +108,32 @@ public sealed class OutlookFlaggedMailConnection
     public string Emoji { get; set; } = "📧";
     public string FolderId { get; set; } = string.Empty;
     public string MaxResults { get; set; } = "100";
+    public string LinkedAccountId { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
+}
+
+public sealed class ImapFlaggedMailConnection
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = string.Empty;
+    public string Emoji { get; set; } = "📨";
+    public bool Enabled { get; set; } = true;
+    public string ImapServer { get; set; } = string.Empty;
+    public string Port { get; set; } = "993";
+    public string Email { get; set; } = string.Empty;
+    [SensitiveField]
+    public string Password { get; set; } = string.Empty;
+    public string FolderPath { get; set; } = "INBOX";
+    public string Keywords { get; set; } = string.Empty;
+    public string MaxResults { get; set; } = "100";
+}
+
+public sealed class LinkedMicrosoftAccount
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string DisplayName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    [SensitiveField]
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTimeOffset LinkedAt { get; set; } = DateTimeOffset.UtcNow;
 }

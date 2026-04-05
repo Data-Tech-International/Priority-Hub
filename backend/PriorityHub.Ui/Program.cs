@@ -37,6 +37,8 @@ builder.Services.AddHttpClient<JiraConnector>();
 builder.Services.AddHttpClient<MicrosoftTasksConnector>();
 builder.Services.AddHttpClient<OutlookFlaggedMailConnector>();
 builder.Services.AddHttpClient<TrelloConnector>();
+builder.Services.AddSingleton<IImapClientFactory, ImapClientFactory>();
+builder.Services.AddSingleton<ImapFlaggedMailConnector>();
 builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
     sp.GetRequiredService<AzureDevOpsConnector>(),
     sp.GetRequiredService<GitHubIssuesConnector>(),
@@ -44,6 +46,7 @@ builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
     sp.GetRequiredService<MicrosoftTasksConnector>(),
     sp.GetRequiredService<OutlookFlaggedMailConnector>(),
     sp.GetRequiredService<TrelloConnector>(),
+    sp.GetRequiredService<ImapFlaggedMailConnector>(),
 ]));
 builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
@@ -511,6 +514,171 @@ app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
     return Results.Redirect("/login");
 }).RequireAuthorization();
 
+// ── Linked Microsoft Account endpoints ──
+
+app.MapGet("/api/auth/link/microsoft", (HttpContext httpContext, IConfiguration configuration) =>
+{
+    var section = configuration.GetSection("Authentication:Microsoft");
+    if (!IsProviderConfigured(section))
+    {
+        return Results.Problem("Microsoft authentication is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var userId = GetUserIdentityKey(httpContext.User);
+    var tenantId = section["TenantId"] ?? "common";
+    var clientId = section["ClientId"]!;
+    var redirectUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/api/auth/link/microsoft/callback";
+
+    // Encode user identity in the state parameter.
+    var state = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(userId));
+
+    var authorizationUrl = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize" +
+        $"?client_id={Uri.EscapeDataString(clientId)}" +
+        $"&response_type=code" +
+        $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+        $"&scope={Uri.EscapeDataString("openid profile email User.Read Tasks.Read Mail.Read offline_access")}" +
+        $"&prompt=consent" +
+        $"&state={Uri.EscapeDataString(state)}";
+
+    return Results.Redirect(authorizationUrl);
+}).RequireAuthorization();
+
+app.MapGet("/api/auth/link/microsoft/callback", async (HttpContext httpContext, IConfigStore configStore, IConfiguration configuration, IHttpClientFactory httpClientFactory, CancellationToken cancellationToken) =>
+{
+    var code = httpContext.Request.Query["code"].ToString();
+    var state = httpContext.Request.Query["state"].ToString();
+    var error = httpContext.Request.Query["error"].ToString();
+
+    if (!string.IsNullOrWhiteSpace(error))
+    {
+        return Results.Redirect("/settings?linkError=" + Uri.EscapeDataString(error));
+    }
+
+    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
+    {
+        return Results.Redirect("/settings?linkError=missing_code");
+    }
+
+    string userId;
+    try
+    {
+        userId = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(state));
+    }
+    catch
+    {
+        return Results.Redirect("/settings?linkError=invalid_state");
+    }
+
+    var section = configuration.GetSection("Authentication:Microsoft");
+    var clientId = section["ClientId"];
+    var clientSecret = section["ClientSecret"];
+    var tenantId = section["TenantId"] ?? "common";
+    var redirectUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/api/auth/link/microsoft/callback";
+
+    if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+    {
+        return Results.Redirect("/settings?linkError=not_configured");
+    }
+
+    var tokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
+    var httpClient = httpClientFactory.CreateClient();
+
+    using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+    {
+        Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+            ["code"] = code,
+            ["redirect_uri"] = redirectUri,
+            ["grant_type"] = "authorization_code",
+        })
+    };
+
+    using var tokenResponse = await httpClient.SendAsync(tokenRequest, cancellationToken);
+    if (!tokenResponse.IsSuccessStatusCode)
+    {
+        return Results.Redirect("/settings?linkError=token_exchange_failed");
+    }
+
+    var tokenBody = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+    using var tokenDoc = JsonDocument.Parse(tokenBody);
+
+    var refreshToken = tokenDoc.RootElement.TryGetProperty("refresh_token", out var rtProp)
+        ? rtProp.GetString() ?? string.Empty
+        : string.Empty;
+
+    if (string.IsNullOrWhiteSpace(refreshToken))
+    {
+        return Results.Redirect("/settings?linkError=no_refresh_token");
+    }
+
+    // Fetch the linked account's profile from Microsoft Graph.
+    var accessToken = tokenDoc.RootElement.TryGetProperty("access_token", out var atProp)
+        ? atProp.GetString() ?? string.Empty
+        : string.Empty;
+
+    string displayName = string.Empty, email = string.Empty;
+    if (!string.IsNullOrWhiteSpace(accessToken))
+    {
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me");
+        meRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var meResponse = await httpClient.SendAsync(meRequest, cancellationToken);
+        if (meResponse.IsSuccessStatusCode)
+        {
+            var meBody = await meResponse.Content.ReadAsStringAsync(cancellationToken);
+            using var meDoc = JsonDocument.Parse(meBody);
+            displayName = meDoc.RootElement.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? string.Empty : string.Empty;
+            email = meDoc.RootElement.TryGetProperty("mail", out var mail) ? mail.GetString() ?? string.Empty
+                : meDoc.RootElement.TryGetProperty("userPrincipalName", out var upn) ? upn.GetString() ?? string.Empty
+                : string.Empty;
+        }
+    }
+
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+    config.LinkedMicrosoftAccounts ??= [];
+
+    // Avoid duplicate linked accounts for the same email.
+    var existing = config.LinkedMicrosoftAccounts
+        .FirstOrDefault(a => string.Equals(a.Email, email, StringComparison.OrdinalIgnoreCase));
+    if (existing is not null)
+    {
+        existing.RefreshToken = refreshToken;
+        existing.DisplayName = displayName;
+        existing.LinkedAt = DateTimeOffset.UtcNow;
+    }
+    else
+    {
+        config.LinkedMicrosoftAccounts.Add(new LinkedMicrosoftAccount
+        {
+            DisplayName = displayName,
+            Email = email,
+            RefreshToken = refreshToken,
+        });
+    }
+
+    await configStore.SaveAsync(userId, config, cancellationToken);
+    return Results.Redirect("/settings?linkSuccess=1");
+});
+
+app.MapDelete("/api/auth/link/microsoft/{accountId}", async (string accountId, HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
+{
+    var userId = GetUserIdentityKey(httpContext.User);
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+
+    var account = config.LinkedMicrosoftAccounts.FirstOrDefault(a =>
+        string.Equals(a.Id, accountId, StringComparison.OrdinalIgnoreCase));
+
+    if (account is null)
+    {
+        return Results.NotFound(new { error = "Account not found." });
+    }
+
+    config.LinkedMicrosoftAccounts.Remove(account);
+    await configStore.SaveAsync(userId, config, cancellationToken);
+    return Results.Ok(new { ok = true });
+}).RequireAuthorization();
+
 app.MapGet("/api/config", async (HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
@@ -542,23 +710,29 @@ app.MapPut("/api/preferences/order", async (HttpContext httpContext, UserPrefere
     return Results.Ok(config.Preferences);
 }).RequireAuthorization();
 
-app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator aggregator, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
-    var oauthTokensByProvider = await GetOauthTokensByProviderAsync(httpContext.User, httpContext, app.Configuration, cancellationToken);
-    var dashboard = await aggregator.BuildAsync(userId, oauthTokensByProvider, cancellationToken);
+    var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
+    var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+    var oauthTokensByConnectionId = await ResolveLinkedAccountTokensAsync(tokenService, config, cancellationToken);
+    var dashboard = await aggregator.BuildAsync(userId, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken);
     return Results.Ok(dashboard);
 }).RequireAuthorization();
 
-app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAggregator aggregator, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, CancellationToken cancellationToken) =>
 {
     httpContext.Response.StatusCode = StatusCodes.Status200OK;
     httpContext.Response.ContentType = "application/x-ndjson";
     httpContext.Response.Headers.CacheControl = "no-cache";
     var userId = GetUserIdentityKey(httpContext.User);
-    var oauthTokensByProvider = await GetOauthTokensByProviderAsync(httpContext.User, httpContext, app.Configuration, cancellationToken);
+    var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
+    var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
+    var config = await configStore.LoadAsync(userId, cancellationToken);
+    var oauthTokensByConnectionId = await ResolveLinkedAccountTokensAsync(tokenService, config, cancellationToken);
 
-    await foreach (var update in aggregator.StreamAsync(userId, oauthTokensByProvider, cancellationToken))
+    await foreach (var update in aggregator.StreamAsync(userId, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken))
     {
         await httpContext.Response.WriteAsync(JsonSerializer.Serialize(update, JsonSerializerOptions.Web), cancellationToken);
         await httpContext.Response.WriteAsync("\n", cancellationToken);
@@ -611,10 +785,27 @@ static string GetUserIdentityKey(ClaimsPrincipal user)
     return $"{sub}_{provider}";
 }
 
-static async Task<Dictionary<string, string>> GetOauthTokensByProviderAsync(ClaimsPrincipal user, HttpContext httpContext, IConfiguration configuration, CancellationToken cancellationToken)
+static async Task<Dictionary<string, string>> ResolveLinkedAccountTokensAsync(OauthTokenService tokenService, ProviderConfiguration config, CancellationToken cancellationToken)
 {
-    var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
-    return await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
+    // Build a map of connectionId → linkedAccountId for connections that opt in.
+    var connectionIdToLinkedAccountId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var conn in config.OutlookFlaggedMail)
+    {
+        if (!string.IsNullOrWhiteSpace(conn.LinkedAccountId))
+            connectionIdToLinkedAccountId[conn.Id] = conn.LinkedAccountId;
+    }
+
+    foreach (var conn in config.MicrosoftTasks)
+    {
+        if (!string.IsNullOrWhiteSpace(conn.LinkedAccountId))
+            connectionIdToLinkedAccountId[conn.Id] = conn.LinkedAccountId;
+    }
+
+    if (connectionIdToLinkedAccountId.Count == 0)
+        return [];
+
+    return await tokenService.GetLinkedAccountTokensAsync(config, connectionIdToLinkedAccountId, cancellationToken);
 }
 
 static async Task<string?> FetchGitHubEmailAsync(OAuthCreatingTicketContext context)

@@ -48,6 +48,8 @@ public sealed class LocalConfigStoreTests : IDisposable
             MicrosoftTasks = null!,
             OutlookFlaggedMail = null!,
             Trello = null!,
+            ImapFlaggedMail = null!,
+            LinkedMicrosoftAccounts = null!,
             Preferences = null!
         };
 
@@ -59,6 +61,8 @@ public sealed class LocalConfigStoreTests : IDisposable
         Assert.NotNull(result.MicrosoftTasks);
         Assert.NotNull(result.OutlookFlaggedMail);
         Assert.NotNull(result.Trello);
+        Assert.NotNull(result.ImapFlaggedMail);
+        Assert.NotNull(result.LinkedMicrosoftAccounts);
         Assert.NotNull(result.Preferences);
         Assert.NotNull(result.Preferences.OrderedItemIds);
     }

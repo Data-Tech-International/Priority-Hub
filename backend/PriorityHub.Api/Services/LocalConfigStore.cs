@@ -61,6 +61,8 @@ public sealed class LocalConfigStore(IHostEnvironment environment) : IConfigStor
         configuration.MicrosoftTasks ??= [];
         configuration.OutlookFlaggedMail ??= [];
         configuration.Trello ??= [];
+        configuration.ImapFlaggedMail ??= [];
+        configuration.LinkedMicrosoftAccounts ??= [];
         configuration.Preferences ??= new UserPreferences();
         configuration.Preferences.OrderedItemIds ??= [];
         return configuration;
