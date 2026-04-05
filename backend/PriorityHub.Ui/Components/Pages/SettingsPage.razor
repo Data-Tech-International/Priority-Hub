@@ -788,6 +788,8 @@
         config.MicrosoftTasks = DeserializeConnections<MicrosoftTasksConnection>("microsoftTasks");
         config.OutlookFlaggedMail = DeserializeConnections<OutlookFlaggedMailConnection>("outlookFlaggedMail");
         config.Trello = DeserializeConnections<TrelloConnection>("trello");
+        config.ImapFlaggedMail = DeserializeConnections<ImapFlaggedMailConnection>("imapFlaggedMail");
+        config.LinkedMicrosoftAccounts = _config.LinkedMicrosoftAccounts;
 
         return config;
     }
@@ -881,6 +883,7 @@
             "microsoft-tasks" => "microsoftTasks",
             "outlook-flagged-mail" => "outlookFlaggedMail",
             "trello" => "trello",
+            "imap-flagged-mail" => "imapFlaggedMail",
             _ => providerKey
         };
 
@@ -969,6 +972,9 @@
         AddEntries(imported.Trello, "Trello", "trello",
             c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
             c => IsMasked(c.ApiKey) || IsMasked(c.Token));
+        AddEntries(imported.ImapFlaggedMail, "IMAP Flagged Mail", "imap-flagged-mail",
+            c => c.Id, c => string.IsNullOrWhiteSpace(c.Name) ? c.Id : c.Name,
+            c => IsMasked(c.Password));
 
         // Match by ID → Update; new ID → Add. No deep diff per spec.
 
@@ -988,6 +994,7 @@
         UpsertConnections(imported.MicrosoftTasks, "microsoftTasks");
         UpsertConnections(imported.OutlookFlaggedMail, "outlookFlaggedMail");
         UpsertConnections(imported.Trello, "trello");
+        UpsertConnections(imported.ImapFlaggedMail, "imapFlaggedMail");
 
         // Preferences are intentionally skipped to preserve manual ordering.
 

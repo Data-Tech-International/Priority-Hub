@@ -37,6 +37,8 @@ builder.Services.AddHttpClient<JiraConnector>();
 builder.Services.AddHttpClient<MicrosoftTasksConnector>();
 builder.Services.AddHttpClient<OutlookFlaggedMailConnector>();
 builder.Services.AddHttpClient<TrelloConnector>();
+builder.Services.AddSingleton<IImapClientFactory, ImapClientFactory>();
+builder.Services.AddSingleton<ImapFlaggedMailConnector>();
 builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
     sp.GetRequiredService<AzureDevOpsConnector>(),
     sp.GetRequiredService<GitHubIssuesConnector>(),
@@ -44,6 +46,7 @@ builder.Services.AddSingleton<ConnectorRegistry>(sp => new ConnectorRegistry([
     sp.GetRequiredService<MicrosoftTasksConnector>(),
     sp.GetRequiredService<OutlookFlaggedMailConnector>(),
     sp.GetRequiredService<TrelloConnector>(),
+    sp.GetRequiredService<ImapFlaggedMailConnector>(),
 ]));
 builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
