@@ -2,6 +2,7 @@
 .env.local
 config/providers.local.json
 config/users/
+config/keys/
 backend/PriorityHub.Api/appsettings.Development.json
 backend/PriorityHub.Ui/appsettings.Development.json
 
