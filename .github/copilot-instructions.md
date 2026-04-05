@@ -29,7 +29,8 @@ This file is the workspace-level quick guide for AI agents. Detailed coding rule
 
 ### Documentation
 - Keep `README.md` as the entry point for setup, usage, and links to `docs/`.
-- Keep detailed user documentation in `docs/` (features, configuration, processes, troubleshooting).
+- Keep `docs/quick-start.md` up to date whenever a feature is added or changed that affects setup steps, connector fields, dashboard behavior, or the getting-started workflow.
+- Keep detailed user documentation in `docs/` (quick start, features, configuration, processes, troubleshooting).
 - Keep plan files in `plans/` updated with progress and verification steps.
 
 ### Documentation Environment Setup

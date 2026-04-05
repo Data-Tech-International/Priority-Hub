@@ -11,6 +11,7 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **Agent definitions normalized**: removed VS Code-specific fields (`tools`, `model`, `target`) from all `.github/agents/*.agent.md` files; normalized quote styles to single quotes and reordered frontmatter (`name` before `description`) to align with GitHub Copilot agent format standards.
 
 ### Added
+- **Quick Start guide**: new `docs/quick-start.md` walks end users through sign-in, connector setup, and dashboard usage, covering all six providers with example field values.
 - **Export download**: the "Download configuration" button now triggers a real browser file download (`priority-hub-config.json`) via JS interop instead of only updating the status message.
 - **Import connector configuration**: a new "Import connector configuration" card on the Import / Export tab lets users upload a previously exported JSON file (max 1 MB). Connections are merged with upsert logic: connections matched by `id` are updated; new `id`s are inserted; connections absent from the file are left unchanged. Preferences (manual ordering) are never overwritten.
 - **Import preview**: after selecting a file, a preview panel summarises how many connections will be added, updated, or unchanged, lists each affected connection by name and provider, and warns if masked secrets (`********`) are detected.
