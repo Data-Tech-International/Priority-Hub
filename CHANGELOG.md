@@ -8,7 +8,8 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Fixed
-- **Forwarded headers middleware**: `UseForwardedHeaders()` is now called explicitly in the middleware pipeline (before authentication) so OAuth callbacks and scheme reconstruction work correctly when deployed behind a reverse proxy or on Azure App Service, regardless of whether the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` environment variable is set.
+- **Blazor interactivity broken in Docker containers**: `_framework/blazor.web.js` was missing from the publish output when Dockerfile used `dotnet publish --no-restore` (a .NET 10 regression, see [dotnet/aspnetcore#63962](https://github.com/dotnet/aspnetcore/issues/63962)). Removed `--no-restore` flag so the SDK correctly emits `_framework/` static web assets. This caused all `@onclick` handlers, tab switching, and connector panel toggles to be non-functional on staging/production while working on localhost.
+- **Forwarded headers middleware**: added explicit `app.UseForwardedHeaders()` before authentication middleware for reliable operation behind reverse proxies (Azure App Service). Previously relied only on the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` environment variable.
 - **Startup database connection resilience**: `ApplyDatabaseMigrationsAsync` now retries up to 5 times (with 5-second delays) on transient `NpgsqlException` failures, preventing container crashes when PostgreSQL is momentarily unreachable during cold start on Azure App Service.
 
 ### Added
