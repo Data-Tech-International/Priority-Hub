@@ -17,7 +17,6 @@ RUN dotnet restore backend/PriorityHub.Ui/PriorityHub.Ui.csproj
 # Copy remaining source and publish
 COPY backend/ backend/
 RUN dotnet publish backend/PriorityHub.Ui/PriorityHub.Ui.csproj \
-        --no-restore \
         --configuration Release \
         --output /app/publish \
         /p:ErrorOnDuplicatePublishOutputFiles=false
