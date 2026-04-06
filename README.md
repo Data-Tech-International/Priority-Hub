@@ -255,7 +255,14 @@ docker run --rm -it \
 | `Authentication__Microsoft__TenantId` | optional | Microsoft tenant ID (default: `common`) |
 | `ASPNETCORE_URLS` | optional | Override listen address (default: `http://+:8080`) |
 
-**Reverse proxy and HTTPS:** Run the container behind a reverse proxy (nginx, Caddy, Traefik) that handles TLS termination. The proxy must forward `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` headers so ASP.NET Core can reconstruct the correct public URL for OAuth callbacks. Enable forwarded-headers middleware in the application if deploying behind a proxy (the `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` environment variable enables this for ASP.NET Core).
+**Reverse proxy and HTTPS:** Run the container behind a reverse proxy (nginx, Caddy, Traefik) that handles TLS termination. The proxy must forward `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` headers so ASP.NET Core can reconstruct the correct public URL for OAuth callbacks. The application explicitly calls `UseForwardedHeaders()` in the middleware pipeline, so no additional environment variable is needed for standard reverse-proxy deployments.
+
+**Azure App Service:** Two settings are required for the app to function correctly on Azure App Service:
+
+- **WebSockets must be enabled.** Blazor Server uses SignalR, which requires WebSocket transport. Azure App Service disables WebSockets by default.
+  - Azure Portal: **App Service → Configuration → General settings → Web sockets → On**
+  - Or in Bicep/ARM: set `webSocketsEnabled: true` in `siteConfig`.
+- **Forwarded headers:** The application already calls `UseForwardedHeaders()` explicitly. As an extra safeguard you can also set the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` application setting to `true`; this is only necessary if you replace or bypass the explicit middleware call.
 
 **Sticky sessions:** Blazor Server uses persistent SignalR connections. When running multiple container replicas, configure session affinity (sticky sessions) at your load balancer so each browser session is always routed to the same replica.
 

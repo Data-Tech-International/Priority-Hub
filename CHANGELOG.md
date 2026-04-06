@@ -8,6 +8,7 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Fixed
+- **Forwarded headers middleware**: `UseForwardedHeaders()` is now called explicitly in the middleware pipeline (before authentication) so OAuth callbacks and scheme reconstruction work correctly when deployed behind a reverse proxy or on Azure App Service, regardless of whether the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` environment variable is set.
 - **Startup database connection resilience**: `ApplyDatabaseMigrationsAsync` now retries up to 5 times (with 5-second delays) on transient `NpgsqlException` failures, preventing container crashes when PostgreSQL is momentarily unreachable during cold start on Azure App Service.
 
 ### Added
