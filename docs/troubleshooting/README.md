@@ -254,13 +254,34 @@ psql -h <db-host> -U priorityhub -d priorityhub \
   -f backend/PriorityHub.Api/Data/Migrations/0001_initial_schema.sql
 ```
 
-### OAuth callback URL mismatch
+### Azure App Service: Blazor interactivity broken (dashboard/settings not responding)
 
-**Symptom:** After successful sign-in, the OAuth provider redirects to an error page or returns `redirect_uri_mismatch`.
+**Symptom:** The app loads but interactive elements (Settings toggles, tab switching, drag-and-drop) do not respond after deployment to Azure App Service.
+
+**Cause:** Blazor Server requires a persistent WebSocket connection for SignalR. Azure App Service disables WebSockets by default.
 
 **Resolution:**
 
-Register the exact callback URL used by the container in your OAuth app settings:
+Enable WebSockets in Azure App Service:
+
+- **Azure Portal:** Navigate to **App Service → Configuration → General settings** and set **Web sockets** to **On**, then click **Save**.
+- **Bicep/ARM:** Add `webSocketsEnabled: true` to the `siteConfig` block in your infrastructure template.
+
+### Azure App Service: OAuth redirect URI mismatch or login loop
+
+**Symptom:** After sign-in, the app redirects to an incorrect URL, loops back to the login page, or the OAuth provider returns `redirect_uri_mismatch` when deployed on Azure App Service or behind a reverse proxy.
+
+**Cause:** ASP.NET Core needs to know the public-facing scheme and host when building redirect URIs. Without forwarded-headers middleware, it uses the internal address. Additionally, the callback URLs registered in your OAuth app settings must exactly match the paths the application uses.
+
+**Resolution:**
+
+The application explicitly calls `UseForwardedHeaders()` in the middleware pipeline, so reverse-proxy headers are honored automatically. If the issue persists, also set the following application setting in Azure App Service to enable the built-in ASP.NET Core forwarded-headers handling as an additional layer:
+
+| Name | Value |
+|------|-------|
+| `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `true` |
+
+Register the exact callback URLs in your OAuth app settings:
 
 - GitHub: `https://<your-host>/api/auth/callback/github`
 - Microsoft: `https://<your-host>/api/auth/callback/microsoft`
