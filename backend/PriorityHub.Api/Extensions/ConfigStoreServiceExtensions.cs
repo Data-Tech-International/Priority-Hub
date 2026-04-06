@@ -67,12 +67,35 @@ public static class ConfigStoreServiceExtensions
     /// <summary>
     /// If PostgreSQL is configured, runs pending schema migrations.
     /// Call this after <see cref="WebApplication"/> is built but before <c>app.Run()</c>.
+    /// Retries on transient database connection failures to handle container startup timing.
     /// </summary>
     public static async Task ApplyDatabaseMigrationsAsync(this WebApplication app)
     {
-        if (app.Services.GetService<SchemaManager>() is { } schemaManager)
+        if (app.Services.GetService<SchemaManager>() is not { } schemaManager)
         {
-            await schemaManager.ApplyAsync();
+            return;
+        }
+
+        var logger = app.Services.GetRequiredService<ILogger<SchemaManager>>();
+        const int maxRetries = 5;
+        const int delaySeconds = 5;
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                await schemaManager.ApplyAsync();
+                return;
+            }
+            catch (NpgsqlException) when (attempt < maxRetries)
+            {
+                logger.LogWarning(
+                    "Database connection failed (attempt {Attempt}/{Max}). Retrying in {Delay}s...",
+                    attempt,
+                    maxRetries,
+                    delaySeconds);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+            }
         }
     }
 

@@ -7,6 +7,9 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- **Startup database connection resilience**: `ApplyDatabaseMigrationsAsync` now retries up to 5 times (with 5-second delays) on transient `NpgsqlException` failures, preventing container crashes when PostgreSQL is momentarily unreachable during cold start on Azure App Service.
+
 ### Added
 - **Specification**: multi-source email aggregation with credential encryption and linked Microsoft accounts — full spec added at `plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md` covering Phase 1 (backend credential encryption via .NET Data Protection API), Phase 2 (IMAP flagged-mail connector using MailKit), and Phase 3 (linked Microsoft accounts with per-connection account selection).
 - **Backend credential encryption (Phase 1)**: all sensitive connector credential fields (`PersonalAccessToken`, `ApiToken`, `ApiKey`, `Token`, `Password`, `RefreshToken`) are now encrypted at rest using .NET Data Protection API with a file-system key ring (`config/keys/`). Both `LocalConfigStore` (file) and `PostgresConfigStore` (PostgreSQL) apply encryption transparently via a new `EncryptingConfigStore` decorator. Existing plaintext configs migrate automatically on the first load+save cycle.
