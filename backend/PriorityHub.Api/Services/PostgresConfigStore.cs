@@ -56,4 +56,15 @@ public sealed class PostgresConfigStore(NpgsqlDataSource dataSource) : IConfigSt
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
+
+    public async Task<int> GetRegisteredUserCountAsync(CancellationToken cancellationToken)
+    {
+        const string sql = "SELECT COUNT(*) FROM user_config";
+
+        await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+
+        var value = await cmd.ExecuteScalarAsync(cancellationToken);
+        return value is long count ? checked((int)count) : 0;
+    }
 }

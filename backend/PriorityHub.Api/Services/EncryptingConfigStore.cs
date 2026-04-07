@@ -29,6 +29,9 @@ public sealed class EncryptingConfigStore(
         await inner.SaveAsync(userId, clone, cancellationToken);
     }
 
+    public Task<int> GetRegisteredUserCountAsync(CancellationToken cancellationToken)
+        => inner.GetRegisteredUserCountAsync(cancellationToken);
+
     private static ProviderConfiguration DeepClone(ProviderConfiguration config)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(config, System.Text.Json.JsonSerializerOptions.Web);
