@@ -9,6 +9,7 @@ using PriorityHub.Api.Extensions;
 using PriorityHub.Api.Models;
 using PriorityHub.Api.Services;
 using PriorityHub.Api.Services.Connectors;
+using PriorityHub.Api.Services.Telemetry;
 using PriorityHub.Ui.Components;
 using PriorityHub.Ui.Services;
 
@@ -52,6 +53,8 @@ builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
 builder.Services.AddScoped<OauthTokenService>();
 builder.Services.AddScoped<PassphraseCacheInterop>();
+builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddPriorityHubTelemetry(builder.Configuration);
 
 // ── Authentication ──
 builder.Services
@@ -136,6 +139,10 @@ builder.Services
                 }
 
                 context.Identity?.AddClaim(new Claim("provider", "microsoft"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("microsoft", identityKey);
             }
         };
     })
@@ -194,6 +201,10 @@ builder.Services
                 }
 
                 context.Identity?.AddClaim(new Claim("provider", "github"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("github", identityKey);
             }
         };
     })
@@ -229,6 +240,10 @@ builder.Services
                 using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                 context.RunClaimActions(document.RootElement);
                 context.Identity?.AddClaim(new Claim("provider", "google"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("google", identityKey);
             }
         };
     })
@@ -260,6 +275,10 @@ builder.Services
                 using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                 context.RunClaimActions(document.RootElement);
                 context.Identity?.AddClaim(new Claim("provider", "facebook"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("facebook", identityKey);
             }
         };
     })
@@ -294,6 +313,10 @@ builder.Services
                 using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                 context.RunClaimActions(document.RootElement);
                 context.Identity?.AddClaim(new Claim("provider", "jira"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("jira", identityKey);
             }
         };
     })
@@ -325,6 +348,10 @@ builder.Services
                 using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                 context.RunClaimActions(document.RootElement);
                 context.Identity?.AddClaim(new Claim("provider", "trello"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("trello", identityKey);
             }
         };
     })
@@ -355,6 +382,10 @@ builder.Services
                 using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                 context.RunClaimActions(document.RootElement);
                 context.Identity?.AddClaim(new Claim("provider", "yandex"));
+
+                var telemetryService = context.HttpContext.RequestServices.GetRequiredService<ITelemetryService>();
+                var identityKey = GetUserIdentityKey(new ClaimsPrincipal(context.Identity ?? new ClaimsIdentity()));
+                telemetryService.RecordSignIn("yandex", identityKey);
             }
         };
     });
@@ -509,8 +540,9 @@ app.MapGet("/api/auth/login/yandex", (IConfiguration configuration) =>
     return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [YandexScheme]);
 });
 
-app.MapPost("/api/auth/logout", async (HttpContext httpContext) =>
+app.MapPost("/api/auth/logout", async (HttpContext httpContext, ITelemetryService telemetryService) =>
 {
+    telemetryService.RecordSignOut(GetUserIdentityKey(httpContext.User));
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).RequireAuthorization();
@@ -544,7 +576,7 @@ app.MapGet("/api/auth/link/microsoft", (HttpContext httpContext, IConfiguration 
     return Results.Redirect(authorizationUrl);
 }).RequireAuthorization();
 
-app.MapGet("/api/auth/link/microsoft/callback", async (HttpContext httpContext, IConfigStore configStore, IConfiguration configuration, IHttpClientFactory httpClientFactory, CancellationToken cancellationToken) =>
+app.MapGet("/api/auth/link/microsoft/callback", async (HttpContext httpContext, IConfigStore configStore, IConfiguration configuration, IHttpClientFactory httpClientFactory, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     var code = httpContext.Request.Query["code"].ToString();
     var state = httpContext.Request.Query["state"].ToString();
@@ -659,10 +691,11 @@ app.MapGet("/api/auth/link/microsoft/callback", async (HttpContext httpContext, 
     }
 
     await configStore.SaveAsync(userId, config, cancellationToken);
+    telemetryService.RecordLinkedAccountOperation("added", userId);
     return Results.Redirect("/settings?linkSuccess=1");
 });
 
-app.MapDelete("/api/auth/link/microsoft/{accountId}", async (string accountId, HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapDelete("/api/auth/link/microsoft/{accountId}", async (string accountId, HttpContext httpContext, IConfigStore configStore, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
     var config = await configStore.LoadAsync(userId, cancellationToken);
@@ -677,21 +710,24 @@ app.MapDelete("/api/auth/link/microsoft/{accountId}", async (string accountId, H
 
     config.LinkedMicrosoftAccounts.Remove(account);
     await configStore.SaveAsync(userId, config, cancellationToken);
+    telemetryService.RecordLinkedAccountOperation("removed", userId);
     return Results.Ok(new { ok = true });
 }).RequireAuthorization();
 
-app.MapGet("/api/config", async (HttpContext httpContext, IConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapGet("/api/config", async (HttpContext httpContext, IConfigStore configStore, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
+    telemetryService.RecordUserActivity(userId);
     var config = await configStore.LoadAsync(userId, cancellationToken);
     return Results.Ok(config);
 }).RequireAuthorization();
 
-app.MapPut("/api/config", async (HttpContext httpContext, ProviderConfiguration configuration, IConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapPut("/api/config", async (HttpContext httpContext, ProviderConfiguration configuration, IConfigStore configStore, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
     await configStore.SaveAsync(userId, configuration, cancellationToken);
     var saved = await configStore.LoadAsync(userId, cancellationToken);
+    telemetryService.RecordConfigSave(userId, CountEnabledConnections(saved));
     return Results.Ok(saved);
 }).RequireAuthorization();
 
@@ -711,9 +747,11 @@ app.MapPut("/api/preferences/order", async (HttpContext httpContext, UserPrefere
     return Results.Ok(config.Preferences);
 }).RequireAuthorization();
 
-app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     var userId = GetUserIdentityKey(httpContext.User);
+    telemetryService.RecordUserActivity(userId);
+    telemetryService.RecordPageView("/", userId);
     var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
     var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
     var config = await configStore.LoadAsync(userId, cancellationToken);
@@ -722,12 +760,14 @@ app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator
     return Results.Ok(dashboard);
 }).RequireAuthorization();
 
-app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAggregator aggregator, IConfigStore configStore, ITelemetryService telemetryService, CancellationToken cancellationToken) =>
 {
     httpContext.Response.StatusCode = StatusCodes.Status200OK;
     httpContext.Response.ContentType = "application/x-ndjson";
     httpContext.Response.Headers.CacheControl = "no-cache";
     var userId = GetUserIdentityKey(httpContext.User);
+    telemetryService.RecordUserActivity(userId);
+    telemetryService.RecordPageView("/", userId);
     var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
     var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
     var config = await configStore.LoadAsync(userId, cancellationToken);
@@ -784,6 +824,17 @@ static string GetUserIdentityKey(ClaimsPrincipal user)
     var sub = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
     var provider = user.FindFirstValue("provider") ?? "unknown";
     return $"{sub}_{provider}";
+}
+
+static int CountEnabledConnections(ProviderConfiguration configuration)
+{
+    return configuration.AzureDevOps.Count(c => c.Enabled)
+        + configuration.GitHub.Count(c => c.Enabled)
+        + configuration.Jira.Count(c => c.Enabled)
+        + configuration.MicrosoftTasks.Count(c => c.Enabled)
+        + configuration.OutlookFlaggedMail.Count(c => c.Enabled)
+        + configuration.Trello.Count(c => c.Enabled)
+        + configuration.ImapFlaggedMail.Count(c => c.Enabled);
 }
 
 static async Task<Dictionary<string, string>> ResolveLinkedAccountTokensAsync(OauthTokenService tokenService, ProviderConfiguration config, CancellationToken cancellationToken)
