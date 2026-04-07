@@ -1,20 +1,16 @@
-# Specification: [Specification] Azure Application Insights Telemetry for Application Usage Tracking
-
-## Metadata
-- Source issue: #74
-- Source URL: https://github.com/Data-Tech-International/Priority-Hub/issues/74
-- Author: @ipavlovi
-- Created: 2026-04-07T12:30:01Z
-
-## Specification
-
 ---
-title: Azure Application Insights Telemetry for Application Usage Tracking
+title: "Azure Application Insights Telemetry for Application Usage Tracking"
 version: 1.1
 date_created: 2026-04-07
 last_updated: 2026-04-07
-owner: Priority Hub Team
-tags: infrastructure, telemetry, observability, application-insights, azure-monitor
+owner: "Priority Hub Team"
+tags:
+  - infrastructure
+  - telemetry
+  - observability
+  - application-insights
+  - azure-monitor
+source_issue: "#74"
 ---
 
 # Introduction
@@ -737,6 +733,3 @@ exceptions
 - [Kusto Query Language (KQL) for Application Insights](https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/)
 - [Priority Hub multi-source email aggregation spec](plans/specifications/spec-62-spec-multi-source-email-aggregation-with-credential-encryption.md)
 
-
-## Clarifications
-- [ ] Confirm assumptions before planning if anything is unclear.
