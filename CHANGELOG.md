@@ -7,6 +7,12 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- **First-run onboarding redirect**: when an authenticated user has no connectors configured, the dashboard automatically redirects to `/settings?onboarding=true` with a welcome toast guiding them to configure their first connector.
+- **Import auto-save and tab switch**: confirming a configuration import now automatically persists the imported settings and navigates to the Connectors tab with a success banner. On save failure, the user stays on the Import/Export tab with an error message.
+- **Collapsible dashboard panels**: the hero panel (title, description, metrics) and the title/filter panel on the dashboard are now collapsible via toggle buttons. Collapse state is persisted in `localStorage`, defaults to expanded, and collapsing filters does not clear active filter state. Toggle buttons include `aria-expanded` for accessibility.
+- **`ProviderConfiguration.HasAnyConnections()`**: helper method that returns `true` if any connector list contains at least one connection.
+
 ### Fixed
 - **Blazor interactivity broken in Docker containers**: `_framework/blazor.web.js` was missing from the publish output when Dockerfile used `dotnet publish --no-restore` (a .NET 10 regression, see [dotnet/aspnetcore#63962](https://github.com/dotnet/aspnetcore/issues/63962)). Removed `--no-restore` flag so the SDK correctly emits `_framework/` static web assets. This caused all `@onclick` handlers, tab switching, and connector panel toggles to be non-functional on staging/production while working on localhost.
 - **Forwarded headers middleware**: added explicit `app.UseForwardedHeaders()` before authentication middleware for reliable operation behind reverse proxies (Azure App Service). Previously relied only on the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` environment variable.

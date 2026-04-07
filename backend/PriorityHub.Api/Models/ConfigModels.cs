@@ -17,6 +17,14 @@ public sealed class ProviderConfiguration
     public UserPreferences Preferences { get; set; } = new();
 
     /// <summary>
+    /// Returns true if any connector list contains at least one connection.
+    /// </summary>
+    public bool HasAnyConnections() =>
+        AzureDevOps.Count > 0 || GitHub.Count > 0 || Jira.Count > 0 ||
+        MicrosoftTasks.Count > 0 || OutlookFlaggedMail.Count > 0 ||
+        Trello.Count > 0 || ImapFlaggedMail.Count > 0;
+
+    /// <summary>
     /// Returns the connections for a given provider key as serialized JsonElements
     /// so DashboardAggregator can pass them to IConnector.FetchConnectionAsync without
     /// knowing the concrete connection type.
