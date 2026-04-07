@@ -53,7 +53,13 @@ builder.Services.AddSingleton<DashboardAggregator>();
 builder.Services.AddSingleton<WorkItemRanker>();
 builder.Services.AddScoped<OauthTokenService>();
 builder.Services.AddScoped<PassphraseCacheInterop>();
-builder.Services.AddApplicationInsightsTelemetry();
+var applicationInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString)
+    || !string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+}
+
 builder.Services.AddPriorityHubTelemetry(builder.Configuration);
 
 // ── Authentication ──

@@ -141,4 +141,5 @@ Use the **Import / Export** tab in Settings to:
 
 - See [Features](features/README.md) for the full scoring formula, status mapping, and multi-connector details.
 - See [Configuration](configuration/README.md) for advanced query examples and the complete field reference.
+- If you are deploying in Azure, enable optional Application Insights telemetry by configuring `APPLICATIONINSIGHTS_CONNECTION_STRING` (see [Configuration](configuration/README.md#azure-monitor-telemetry-optional)).
 - Check [Troubleshooting](troubleshooting/README.md) if the dashboard is empty or a connector shows an error.

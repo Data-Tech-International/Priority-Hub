@@ -253,11 +253,30 @@ docker run --rm -it \
 | `Authentication__Microsoft__ClientId` | ✔ (if using Microsoft login) | Microsoft OAuth app client ID |
 | `Authentication__Microsoft__ClientSecret` | ✔ (if using Microsoft login) | Microsoft OAuth app client secret |
 | `Authentication__Microsoft__TenantId` | optional | Microsoft tenant ID (default: `common`) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | optional | Enables Application Insights/Azure Monitor telemetry when set |
 | `ASPNETCORE_URLS` | optional | Override listen address (default: `http://+:8080`) |
 
 **Reverse proxy and HTTPS:** Run the container behind a reverse proxy (nginx, Caddy, Traefik) that handles TLS termination. The proxy must forward `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` headers so ASP.NET Core can reconstruct the correct public URL for OAuth callbacks. The application explicitly calls `UseForwardedHeaders()` in the middleware pipeline, so no additional environment variable is needed for standard reverse-proxy deployments.
 
 **Azure App Service:** Two settings are required for the app to function correctly on Azure App Service:
+
+## Optional Observability (Azure Monitor)
+
+Priority Hub supports optional Application Insights telemetry for usage tracking and operational monitoring.
+
+- Telemetry is enabled only when `APPLICATIONINSIGHTS_CONNECTION_STRING` (or `ApplicationInsights:ConnectionString`) is configured.
+- Without a connection string, Priority Hub runs normally with no telemetry export.
+- User identity in custom telemetry is hashed before emission; raw emails are not emitted in custom dimensions.
+
+Tracked telemetry includes:
+
+- Authentication sign-in/sign-out events.
+- Connector fetch success/error, duration, and item count metrics.
+- Configuration save and linked-account operations.
+- Active/registered user count metrics.
+- Core page views (`/`, `/settings`, `/login`).
+
+For detailed configuration and operational guidance, see [docs/configuration/README.md](docs/configuration/README.md).
 
 - **WebSockets must be enabled.** Blazor Server uses SignalR, which requires WebSocket transport. Azure App Service disables WebSockets by default.
   - Azure Portal: **App Service → Configuration → General settings → Web sockets → On**
