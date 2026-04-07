@@ -6,12 +6,25 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
 @inject OauthTokenService TokenService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="app-shell">
     <main class="dashboard">
-        <section class="hero-panel">
-            <div class="hero-copy">
+        <section class="hero-panel@(_heroCollapsed ? " is-collapsed" : "")">
+            <div class="section-toggle-row">
+                <button type="button"
+                        class="section-toggle-button"
+                        @onclick="ToggleHeroPanel"
+                        aria-expanded="@(!_heroCollapsed)"
+                        aria-controls="hero-panel-content">
+                    <span>@(_heroCollapsed ? "Show overview" : "Hide overview")</span>
+                    <span class="section-toggle-chevron" aria-hidden="true">@(_heroCollapsed ? "▼" : "▲")</span>
+                </button>
+            </div>
+            @if (!_heroCollapsed)
+            {
+            <div class="hero-copy" id="hero-panel-content">
                 <p class="eyebrow">Priority Hub</p>
                 <h1>Manually ordered priorities across Azure DevOps, GitHub, Jira, and Trello.</h1>
                 <p class="hero-text">
@@ -85,6 +98,7 @@
                     <p>Newly retrieved items are highlighted and floated to the top until ordered.</p>
                 </article>
             </div>
+            }
         </section>
 
         @if (_error is not null)
@@ -120,9 +134,22 @@
                     <div>
                         <h2>Unified work queue</h2>
                     </div>
-                    <span class="queue-hint">@(_savingOrder ? "Saving order…" : "Drag and drop to reorder")</span>
+                    <div class="panel-header-actions">
+                        <button type="button"
+                                class="section-toggle-button"
+                                @onclick="ToggleFiltersPanel"
+                                aria-expanded="@(!_filtersCollapsed)"
+                                aria-controls="filters-panel-content">
+                            <span>@(_filtersCollapsed ? "Show filters" : "Hide filters")</span>
+                            <span class="section-toggle-chevron" aria-hidden="true">@(_filtersCollapsed ? "▼" : "▲")</span>
+                        </button>
+                        <span class="queue-hint">@(_savingOrder ? "Saving order…" : "Drag and drop to reorder")</span>
+                    </div>
                 </div>
 
+                @if (!_filtersCollapsed)
+                {
+                <div id="filters-panel-content">
                 <HelpPanel ContextKey="dashboard.overview" Title="@HelpContent.Entries["dashboard.overview"].Title">
                     @foreach (var line in HelpContent.Entries["dashboard.overview"].Body)
                     {
@@ -244,6 +271,8 @@
                         </div>
                     }
                 </section>
+                </div>
+                }
 
                 <div class="item-list">
                     @if (_loading && FilteredItems.Count == 0)
@@ -382,6 +411,8 @@
     private string? _dragOverItemId;
     private bool _savingOrder;
     private bool _showConnectors;
+    private bool _heroCollapsed;
+    private bool _filtersCollapsed;
     private CancellationTokenSource? _cts;
     private string? _dragAnnouncement;
 
@@ -436,7 +467,65 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            var userId = GetUserIdentityKey(httpContext.User);
+            try
+            {
+                var config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
+                if (!config.HasAnyConnections())
+                {
+                    Navigation.NavigateTo("/settings?onboarding=true", replace: true);
+                    return;
+                }
+            }
+            catch
+            {
+                // Config load failed — continue to dashboard
+            }
+        }
+
         await LoadDashboardAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var heroStored = await JS.InvokeAsync<string?>("localStorage.getItem", "phub:dashboard:heroCollapsed");
+                var filtersStored = await JS.InvokeAsync<string?>("localStorage.getItem", "phub:dashboard:filtersCollapsed");
+                _heroCollapsed = heroStored == "true";
+                _filtersCollapsed = filtersStored == "true";
+                StateHasChanged();
+            }
+            catch
+            {
+                // localStorage may not be available during prerendering
+            }
+        }
+    }
+
+    private async Task ToggleHeroPanel()
+    {
+        _heroCollapsed = !_heroCollapsed;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "phub:dashboard:heroCollapsed", _heroCollapsed ? "true" : "false");
+        }
+        catch { /* ignore storage errors */ }
+    }
+
+    private async Task ToggleFiltersPanel()
+    {
+        _filtersCollapsed = !_filtersCollapsed;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "phub:dashboard:filtersCollapsed", _filtersCollapsed ? "true" : "false");
+        }
+        catch { /* ignore storage errors */ }
     }
 
     private async Task RefreshDashboard()
