@@ -35,6 +35,63 @@ Migrations live in `backend/PriorityHub.Api/Data/Migrations/` and are embedded i
 - **Other environments**: the application fails fast with a clear error if unapplied migrations are detected.
   Run migrations manually (e.g., using `psql` or a migration tool) before deploying.
 
+## Azure Monitor Telemetry (Optional)
+
+Priority Hub can emit usage telemetry to Azure Application Insights (Azure Monitor).
+
+Telemetry is optional and enabled only when a connection string is provided:
+
+- Environment variable (recommended): `APPLICATIONINSIGHTS_CONNECTION_STRING`
+- Or configuration key: `ApplicationInsights:ConnectionString`
+
+### Local development configuration
+
+Set via user secrets (recommended):
+
+```bash
+dotnet user-secrets set "ApplicationInsights:ConnectionString" "InstrumentationKey=<key>;IngestionEndpoint=https://<region>.in.applicationinsights.azure.com/" \
+  --project backend/PriorityHub.Ui
+```
+
+### Optional telemetry options
+
+The following keys are available in `Telemetry` configuration:
+
+| Key | Default | Description |
+|---|---|---|
+| `Telemetry:ActiveUserWindowMinutes` | `1440` | Rolling window for active-user counting. |
+| `Telemetry:RegisteredUserRefreshIntervalSeconds` | `300` | Interval for active/registered user metric emission (minimum enforced: 60 seconds). |
+| `Telemetry:MaxActiveUserEntries` | `100000` | In-memory cap for tracked active users. |
+
+### What is tracked
+
+- Events: `AuthenticationSignIn`, `AuthenticationSignOut`, `ConnectorFetch`, `ConfigurationSaved`, `LinkedAccountAdded`, `LinkedAccountRemoved`
+- Metrics: `AuthSignInCount`, `ConnectorFetchCount`, `ConnectorFetchDuration`, `ConnectorItemsCount`, `ActiveUsers`, `RegisteredUsers`
+- Page views: `/`, `/settings`, `/login`
+- Automatic telemetry (when enabled): incoming requests and outbound dependencies
+
+### Validate telemetry in Azure
+
+Use the following KQL snippets in Application Insights Logs:
+
+```kql
+customEvents
+| where name in ("AuthenticationSignIn", "AuthenticationSignOut", "ConnectorFetch", "ConfigurationSaved", "LinkedAccountAdded", "LinkedAccountRemoved")
+| order by timestamp desc
+```
+
+```kql
+customMetrics
+| where name in ("AuthSignInCount", "ConnectorFetchCount", "ConnectorFetchDuration", "ConnectorItemsCount", "ActiveUsers", "RegisteredUsers")
+| order by timestamp desc
+```
+
+### Security guidance
+
+- Do not commit connection strings to source control.
+- Prefer Azure Key Vault + environment variable injection in deployed environments.
+- Custom telemetry user identifiers are hashed before emission.
+
 ## Adding a Connector
 
 1. Open the application and navigate to **Settings**.
