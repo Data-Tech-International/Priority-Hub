@@ -409,6 +409,26 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.Use(async (httpContext, next) =>
+{
+    if (HttpMethods.IsGet(httpContext.Request.Method))
+    {
+        var path = httpContext.Request.Path.Value ?? string.Empty;
+        if (path.Equals("/", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/settings", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            var telemetryService = httpContext.RequestServices.GetRequiredService<ITelemetryService>();
+            var userIdentityKey = httpContext.User.Identity?.IsAuthenticated == true
+                ? GetUserIdentityKey(httpContext.User)
+                : null;
+            telemetryService.RecordPageView(path, userIdentityKey);
+        }
+    }
+
+    await next();
+});
+
 app.MapStaticAssets();
 
 // ── API endpoints (kept from existing Program.cs) ──
@@ -751,7 +771,6 @@ app.MapGet("/api/dashboard", async (HttpContext httpContext, DashboardAggregator
 {
     var userId = GetUserIdentityKey(httpContext.User);
     telemetryService.RecordUserActivity(userId);
-    telemetryService.RecordPageView("/", userId);
     var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
     var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
     var config = await configStore.LoadAsync(userId, cancellationToken);
@@ -767,7 +786,6 @@ app.MapGet("/api/dashboard/stream", async (HttpContext httpContext, DashboardAgg
     httpContext.Response.Headers.CacheControl = "no-cache";
     var userId = GetUserIdentityKey(httpContext.User);
     telemetryService.RecordUserActivity(userId);
-    telemetryService.RecordPageView("/", userId);
     var tokenService = httpContext.RequestServices.GetRequiredService<OauthTokenService>();
     var oauthTokensByProvider = await tokenService.GetTokensByProviderAsync(httpContext, cancellationToken);
     var config = await configStore.LoadAsync(userId, cancellationToken);
