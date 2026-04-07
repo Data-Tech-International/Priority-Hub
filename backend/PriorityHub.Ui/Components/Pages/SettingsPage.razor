@@ -6,6 +6,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject PassphraseCacheInterop PassphraseCache
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Settings — Priority Hub</PageTitle>
 
@@ -528,6 +529,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Check for onboarding redirect
+        var uri = new Uri(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (query["onboarding"] == "true")
+        {
+            _statusMessage = "Welcome to Priority Hub! Configure your first connector below to get started.";
+            _statusIsError = false;
+        }
+
         // Load connector metadata from registry
         _connectorMetadata = ConnectorRegistry.GetAll().Select(c => new ConnectorMeta(
             c.ProviderKey, c.DisplayName, c.Description, c.DefaultEmoji, c.ConfigFields)).ToList();
@@ -1104,9 +1114,9 @@
         return preview;
     }
 
-    private Task ApplyImportAsync()
+    private async Task ApplyImportAsync()
     {
-        if (_pendingImportConfig is null) return Task.CompletedTask;
+        if (_pendingImportConfig is null) return;
 
         var imported = _pendingImportConfig;
 
@@ -1121,14 +1131,33 @@
 
         // Preferences are intentionally skipped to preserve manual ordering.
 
-        _hasUnsavedChanges = true;
         _importPreview = null;
         _pendingImportConfig = null;
         _importError = null;
-        _statusMessage = "Import applied. Review the changes below and click \"Save connector configuration\" to persist.";
-        _statusIsError = false;
 
-        return Task.CompletedTask;
+        // Auto-save the imported configuration
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext is null) return;
+
+            var userId = GetUserIdentityKey(httpContext.User);
+            var configToSave = BuildConfigFromConnections();
+            await ConfigStore.SaveAsync(userId, configToSave, CancellationToken.None);
+            _config = await ConfigStore.LoadAsync(userId, CancellationToken.None);
+            RebuildConnectionsDictionary();
+            _hasUnsavedChanges = false;
+            _statusMessage = "Configuration imported and saved. Review your connectors below.";
+            _statusIsError = false;
+            _activeTab = "connectors";
+        }
+        catch (Exception ex)
+        {
+            _hasUnsavedChanges = true;
+            _statusMessage = $"Import applied but save failed: {ex.Message}";
+            _statusIsError = true;
+            // Stay on Import/Export tab on failure
+        }
     }
 
     private void UpsertConnections<T>(List<T> importedList, string configKey) where T : class
