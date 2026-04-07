@@ -509,6 +509,10 @@ textarea {
   line-height: 1;
 }
 
+.hero-panel > .section-toggle-row {
+  grid-column: 1 / -1;
+}
+
 .hero-panel.is-collapsed {
   display: block;
   margin-bottom: 12px;
