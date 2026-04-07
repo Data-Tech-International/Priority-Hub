@@ -34,6 +34,19 @@ public sealed class LocalConfigStore(IHostEnvironment environment) : IConfigStor
         await JsonSerializer.SerializeAsync(stream, Normalize(configuration), JsonOptions, cancellationToken);
     }
 
+    public Task<int> GetRegisteredUserCountAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!Directory.Exists(UserConfigDirectory))
+        {
+            return Task.FromResult(0);
+        }
+
+        var count = Directory.EnumerateFiles(UserConfigDirectory, "*.json", SearchOption.TopDirectoryOnly).Count();
+        return Task.FromResult(count);
+    }
+
     private string GetConfigPath(string userId)
     {
         var fileName = SanitizeForFileName(string.IsNullOrWhiteSpace(userId) ? "anonymous" : userId.Trim());

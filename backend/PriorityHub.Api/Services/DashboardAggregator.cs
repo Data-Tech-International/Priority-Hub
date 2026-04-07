@@ -1,10 +1,13 @@
 using PriorityHub.Api.Models;
+using PriorityHub.Api.Services.Connectors;
+using PriorityHub.Api.Services.Telemetry;
 
 namespace PriorityHub.Api.Services;
 
 public sealed class DashboardAggregator(
     IConfigStore configStore,
-    ConnectorRegistry connectorRegistry)
+    ConnectorRegistry connectorRegistry,
+    ITelemetryService telemetryService)
 {
     public async Task<DashboardPayload> BuildAsync(string userId, IReadOnlyDictionary<string, string> oauthTokensByProvider, CancellationToken cancellationToken)
         => await BuildAsync(userId, oauthTokensByProvider, new Dictionary<string, string>(), cancellationToken);
@@ -34,7 +37,7 @@ public sealed class DashboardAggregator(
             GeneratedAt = DateTimeOffset.UtcNow.ToString("O")
         };
 
-        var pendingFetches = BuildPendingFetches(config, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken);
+        var pendingFetches = BuildPendingFetches(userId, config, oauthTokensByProvider, oauthTokensByConnectionId, cancellationToken);
         var totalConnections = pendingFetches.Count;
         var completedConnections = 0;
 
@@ -70,7 +73,7 @@ public sealed class DashboardAggregator(
         }
     }
 
-    private List<PendingFetch> BuildPendingFetches(ProviderConfiguration config, IReadOnlyDictionary<string, string> oauthTokensByProvider, IReadOnlyDictionary<string, string> oauthTokensByConnectionId, CancellationToken cancellationToken)
+    private List<PendingFetch> BuildPendingFetches(string userId, ProviderConfiguration config, IReadOnlyDictionary<string, string> oauthTokensByProvider, IReadOnlyDictionary<string, string> oauthTokensByConnectionId, CancellationToken cancellationToken)
     {
         var pendingFetches = new List<PendingFetch>();
 
@@ -104,12 +107,43 @@ public sealed class DashboardAggregator(
                 }
 
                 pendingFetches.Add(new PendingFetch(
-                    connector.ProviderKey, id, name,
-                    connector.FetchConnectionAsync(connectionConfig, oauthToken, cancellationToken)));
+                    connector.ProviderKey,
+                    id,
+                    name,
+                    InstrumentFetchAsync(connector, connectionConfig, oauthToken, id, userId, cancellationToken)));
             }
         }
 
         return pendingFetches;
+    }
+
+    private async Task<ConnectorResult> InstrumentFetchAsync(IConnector connector, System.Text.Json.JsonElement connectionConfig, string? oauthToken, string connectionId, string userId, CancellationToken cancellationToken)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+
+        try
+        {
+            var result = await connector.FetchConnectionAsync(connectionConfig, oauthToken, cancellationToken);
+            var durationMs = (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds;
+            telemetryService.RecordConnectorFetch(connector.ProviderKey, connectionId, userId, result.WorkItems.Count, durationMs, success: true);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            var durationMs = (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds;
+            telemetryService.RecordConnectorFetch(connector.ProviderKey, connectionId, userId, 0, durationMs, success: false);
+            telemetryService.RecordConnectorException(ex, connector.ProviderKey, connectionId, userId);
+
+            var failedResult = new ConnectorResult();
+            failedResult.Issues.Add(new ProviderIssue
+            {
+                Provider = connector.ProviderKey,
+                ConnectionId = connectionId,
+                Message = ex.Message
+            });
+
+            return failedResult;
+        }
     }
 
     internal static void Merge(DashboardPayload dashboard, ConnectorResult result, HashSet<string> orderedIds)

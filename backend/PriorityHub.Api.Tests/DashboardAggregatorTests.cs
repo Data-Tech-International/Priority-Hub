@@ -2,6 +2,7 @@ using System.Text.Json;
 using PriorityHub.Api.Models;
 using PriorityHub.Api.Services;
 using PriorityHub.Api.Services.Connectors;
+using PriorityHub.Api.Services.Telemetry;
 
 namespace PriorityHub.Api.Tests;
 
@@ -9,6 +10,7 @@ public sealed class DashboardAggregatorTests : IDisposable
 {
     private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
     private const string UserId = "test@example.com";
+    private static readonly ITelemetryService TelemetryService = new StubTelemetryService();
 
     private LocalConfigStore CreateStore() =>
         new(new TestHostEnvironment(Path.Combine(_tempRoot, "api", "bin")));
@@ -73,7 +75,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         await store.SaveAsync(UserId, new ProviderConfiguration(), CancellationToken.None);
 
         var registry = new ConnectorRegistry([]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var payload = await aggregator.BuildAsync(UserId, new Dictionary<string, string>(), CancellationToken.None);
 
@@ -99,7 +101,7 @@ public sealed class DashboardAggregatorTests : IDisposable
 
         // Stub connector returns 2 items for every connection
         var registry = new ConnectorRegistry([new StubJiraConnector(itemsPerConnection: 2)]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var payload = await aggregator.BuildAsync(UserId, new Dictionary<string, string>(), CancellationToken.None);
 
@@ -114,7 +116,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         await store.SaveAsync(UserId, new ProviderConfiguration(), CancellationToken.None);
 
         var registry = new ConnectorRegistry([]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var events = new List<DashboardStreamEvent>();
         await foreach (var ev in aggregator.StreamAsync(UserId, new Dictionary<string, string>(), CancellationToken.None))
@@ -195,7 +197,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         okConnector.BoardConnections.Add(new BoardConnection { Id = "j1", Provider = "jira" });
 
         var registry = new ConnectorRegistry([okConnector]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var payload = await aggregator.BuildAsync(UserId, new Dictionary<string, string>(), CancellationToken.None);
 
@@ -254,7 +256,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         string? capturedToken = null;
         var captureConnector = new TokenCapturingConnector("outlook-flagged-mail", token => capturedToken = token);
         var registry = new ConnectorRegistry([captureConnector]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var oauthTokensByProvider = new Dictionary<string, string> { ["outlook-flagged-mail"] = "primary-token" };
         var oauthTokensByConnectionId = new Dictionary<string, string> { ["outlook-1"] = "linked-account-token" };
@@ -283,7 +285,7 @@ public sealed class DashboardAggregatorTests : IDisposable
         string? capturedToken = null;
         var captureConnector = new TokenCapturingConnector("outlook-flagged-mail", token => capturedToken = token);
         var registry = new ConnectorRegistry([captureConnector]);
-        var aggregator = new DashboardAggregator(store, registry);
+        var aggregator = new DashboardAggregator(store, registry, TelemetryService);
 
         var oauthTokensByProvider = new Dictionary<string, string> { ["outlook-flagged-mail"] = "primary-token" };
         var oauthTokensByConnectionId = new Dictionary<string, string>(); // empty
@@ -308,5 +310,18 @@ public sealed class DashboardAggregatorTests : IDisposable
             result.BoardConnections.Add(new BoardConnection { SyncStatus = "connected" });
             return Task.FromResult(result);
         }
+    }
+
+    private sealed class StubTelemetryService : ITelemetryService
+    {
+        public void RecordSignIn(string provider, string userIdentityKey) { }
+        public void RecordSignOut(string userIdentityKey) { }
+        public void RecordConnectorFetch(string provider, string connectionId, string userIdentityKey, int itemCount, double durationMs, bool success) { }
+        public void RecordConnectorException(Exception exception, string provider, string connectionId, string userIdentityKey) { }
+        public void RecordUserActivity(string userIdentityKey) { }
+        public void RecordPageView(string pageName, string? userIdentityKey) { }
+        public void RecordConfigSave(string userIdentityKey, int connectorCount) { }
+        public void RecordLinkedAccountOperation(string operation, string userIdentityKey) { }
+        public void RecordUserCounts(int activeUsers, int registeredUsers) { }
     }
 }
