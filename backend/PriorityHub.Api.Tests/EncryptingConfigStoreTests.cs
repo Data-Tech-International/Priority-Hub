@@ -27,6 +27,9 @@ public sealed class EncryptingConfigStoreTests
             return Task.CompletedTask;
         }
 
+        public Task<int> GetRegisteredUserCountAsync(CancellationToken cancellationToken)
+            => Task.FromResult(_store.Count);
+
         public ProviderConfiguration? GetRaw(string userId) =>
             _store.TryGetValue(userId, out var config) ? config : null;
     }
