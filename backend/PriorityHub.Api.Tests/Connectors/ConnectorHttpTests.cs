@@ -355,6 +355,214 @@ public sealed class ConnectorHttpTests
         Assert.Equal("needs-auth", result.BoardConnections[0].SyncStatus);
         Assert.Contains(result.Issues, i => i.Message.Contains("Microsoft sign-in"));
     }
+
+    // ── Trello — FilterMyCards ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Trello_FilterMyCardsTrue_OnlyReturnsMatchingCards()
+    {
+        var memberResponse = OkJson("""{"id":"member-abc"}""");
+        var listsResponse = OkJson("""[{"id":"list1","name":"To Do","closed":false}]""");
+        var cardsResponse = OkJson("""
+        [
+          {"id":"card1","name":"My card","idList":"list1","closed":false,"labels":[],"idMembers":["member-abc"],"dateLastActivity":"2024-01-01T00:00:00Z"},
+          {"id":"card2","name":"Not mine","idList":"list1","closed":false,"labels":[],"idMembers":["other-id"],"dateLastActivity":"2024-01-01T00:00:00Z"},
+          {"id":"card3","name":"Unassigned","idList":"list1","closed":false,"labels":[],"idMembers":[],"dateLastActivity":"2024-01-01T00:00:00Z"}
+        ]
+        """);
+
+        var connector = new TrelloConnector(ClientWith(memberResponse, listsResponse, cardsResponse), NullLogger<TrelloConnector>.Instance);
+        var config = ConnectionJson(new { id = "t1", name = "Board", boardId = "board1", apiKey = "key", token = "tok", filterMyCards = true, enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Single(result.WorkItems);
+        Assert.Equal("My card", result.WorkItems[0].Title);
+        Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+    }
+
+    [Fact]
+    public async Task Trello_FilterMyCardsFalse_ReturnsAllCards()
+    {
+        var listsResponse = OkJson("""[{"id":"list1","name":"To Do","closed":false}]""");
+        var cardsResponse = OkJson("""
+        [
+          {"id":"card1","name":"My card","idList":"list1","closed":false,"labels":[],"idMembers":["member-abc"],"dateLastActivity":"2024-01-01T00:00:00Z"},
+          {"id":"card2","name":"Not mine","idList":"list1","closed":false,"labels":[],"idMembers":["other-id"],"dateLastActivity":"2024-01-01T00:00:00Z"}
+        ]
+        """);
+
+        var connector = new TrelloConnector(ClientWith(listsResponse, cardsResponse), NullLogger<TrelloConnector>.Instance);
+        var config = ConnectionJson(new { id = "t1", name = "Board", boardId = "board1", apiKey = "key", token = "tok", filterMyCards = false, enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Equal(2, result.WorkItems.Count);
+        Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+    }
+
+    [Fact]
+    public async Task Trello_FilterMyCardsTrue_MemberApiFails_ReturnsAllCards()
+    {
+        var memberFailure = Unauthorized();
+        var listsResponse = OkJson("""[{"id":"list1","name":"To Do","closed":false}]""");
+        var cardsResponse = OkJson("""
+        [
+          {"id":"card1","name":"My card","idList":"list1","closed":false,"labels":[],"idMembers":["member-abc"],"dateLastActivity":"2024-01-01T00:00:00Z"},
+          {"id":"card2","name":"Not mine","idList":"list1","closed":false,"labels":[],"idMembers":["other-id"],"dateLastActivity":"2024-01-01T00:00:00Z"}
+        ]
+        """);
+
+        var connector = new TrelloConnector(ClientWith(memberFailure, listsResponse, cardsResponse), NullLogger<TrelloConnector>.Instance);
+        var config = ConnectionJson(new { id = "t1", name = "Board", boardId = "board1", apiKey = "key", token = "tok", filterMyCards = true, enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        // Fallback: all cards returned when member resolution fails
+        Assert.Equal(2, result.WorkItems.Count);
+        Assert.Equal("connected", result.BoardConnections[0].SyncStatus);
+    }
+
+    [Fact]
+    public async Task Trello_FilterMyCardsTrue_MemberApiCalled_BeforeCardsFetch()
+    {
+        var capturedUrls = new List<string>();
+        var memberResponse = OkJson("""{"id":"member-abc"}""");
+        var listsResponse = OkJson("""[{"id":"list1","name":"To Do","closed":false}]""");
+        var cardsResponse = OkJson("""[{"id":"card1","name":"Card","idList":"list1","closed":false,"labels":[],"idMembers":["member-abc"],"dateLastActivity":"2024-01-01T00:00:00Z"}]""");
+
+        var handler = new CapturingQueuedHttpMessageHandler(
+            new Queue<HttpResponseMessage>([memberResponse, listsResponse, cardsResponse]),
+            request => capturedUrls.Add(request.RequestUri?.AbsolutePath ?? ""));
+
+        var connector = new TrelloConnector(new HttpClient(handler), NullLogger<TrelloConnector>.Instance);
+        var config = ConnectionJson(new { id = "t1", name = "Board", boardId = "board1", apiKey = "key", token = "tok", filterMyCards = true, enabled = true });
+
+        await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Equal(3, capturedUrls.Count);
+        Assert.Contains("/tokens/", capturedUrls[0]); // member resolution first
+    }
+
+    // ── Jira — Project scoping ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task Jira_ProjectSet_PrependsProjectToJql()
+    {
+        string? capturedUrl = null;
+        var jiraResponse = OkJson("""{"issues":[]}""");
+        var handler = new CapturingHttpMessageHandler(jiraResponse, r => capturedUrl = r.RequestUri?.ToString());
+
+        var connector = new JiraConnector(new HttpClient(handler));
+        var config = ConnectionJson(new { id = "j1", name = "Jira", baseUrl = "https://myorg.atlassian.net", project = "GROWTH", email = "me@example.com", apiToken = "token", jql = "assignee = currentUser()", enabled = true });
+
+        await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.NotNull(capturedUrl);
+        var decodedUrl = Uri.UnescapeDataString(capturedUrl!);
+        Assert.Contains("project = \"GROWTH\" AND assignee = currentUser()", decodedUrl);
+    }
+
+    [Fact]
+    public async Task Jira_ProjectEmpty_JqlUnchanged()
+    {
+        string? capturedUrl = null;
+        var jiraResponse = OkJson("""{"issues":[]}""");
+        var handler = new CapturingHttpMessageHandler(jiraResponse, r => capturedUrl = r.RequestUri?.ToString());
+
+        var connector = new JiraConnector(new HttpClient(handler));
+        var config = ConnectionJson(new { id = "j1", name = "Jira", baseUrl = "https://myorg.atlassian.net", project = "", email = "me@example.com", apiToken = "token", jql = "assignee = currentUser()", enabled = true });
+
+        await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.NotNull(capturedUrl);
+        var decodedUrl = Uri.UnescapeDataString(capturedUrl!);
+        Assert.Contains("assignee = currentUser()", decodedUrl);
+        Assert.DoesNotContain("project =", decodedUrl);
+    }
+
+    [Fact]
+    public async Task Jira_ProjectSet_SetsProjectNameOnBoardConnection()
+    {
+        var jiraResponse = OkJson("""{"issues":[]}""");
+
+        var connector = new JiraConnector(ClientWith(jiraResponse));
+        var config = ConnectionJson(new { id = "j1", name = "Jira", baseUrl = "https://myorg.atlassian.net", project = "GROWTH", email = "me@example.com", apiToken = "token", jql = "assignee = currentUser()", enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("GROWTH", result.BoardConnections[0].ProjectName);
+    }
+
+    [Fact]
+    public async Task Jira_ProjectEmpty_ProjectNameDefaultsToHost()
+    {
+        var jiraResponse = OkJson("""{"issues":[]}""");
+
+        var connector = new JiraConnector(ClientWith(jiraResponse));
+        var config = ConnectionJson(new { id = "j1", name = "Jira", baseUrl = "https://myorg.atlassian.net", project = "", email = "me@example.com", apiToken = "token", jql = "assignee = currentUser()", enabled = true });
+
+        var result = await connector.FetchConnectionAsync(config, null, CancellationToken.None);
+
+        Assert.Single(result.BoardConnections);
+        Assert.Equal("myorg.atlassian.net", result.BoardConnections[0].ProjectName);
+    }
+
+    // ── Azure DevOps — Default WIQL contains @Me ─────────────────────────────
+
+    [Fact]
+    public void AzureDevOps_DefaultWiql_ContainsAtMe()
+    {
+        var connector = new AzureDevOpsConnector(new HttpClient(), NullLogger<AzureDevOpsConnector>.Instance);
+        var wiqlField = connector.ConfigFields.First(f => f.Key == "wiql");
+        Assert.Contains("@Me", wiqlField.DefaultValue);
+        Assert.Contains("[System.AssignedTo] = @Me", wiqlField.DefaultValue);
+    }
+
+    [Fact]
+    public void AzureDevOps_ModelDefaultWiql_ContainsAtMe()
+    {
+        var connection = new AzureDevOpsConnection();
+        Assert.Contains("@Me", connection.Wiql);
+        Assert.Contains("[System.AssignedTo] = @Me", connection.Wiql);
+    }
+
+    // ── GitHub — Default query still contains assignee:@me ───────────────────
+
+    [Fact]
+    public void GitHub_DefaultQuery_ContainsAssigneeSelf()
+    {
+        var connector = new GitHubIssuesConnector(new HttpClient());
+        var queryField = connector.ConfigFields.First(f => f.Key == "query");
+        Assert.Contains("assignee:@me", queryField.DefaultValue);
+    }
+
+    // ── Trello — ConfigFields includes filterMyCards checkbox ─────────────────
+
+    [Fact]
+    public void Trello_ConfigFields_IncludesFilterMyCardsCheckbox()
+    {
+        var connector = new TrelloConnector(new HttpClient(), NullLogger<TrelloConnector>.Instance);
+        var field = connector.ConfigFields.FirstOrDefault(f => f.Key == "filterMyCards");
+        Assert.NotNull(field);
+        Assert.Equal("checkbox", field!.InputKind);
+        Assert.Equal("true", field.DefaultValue);
+        Assert.False(field.Required);
+    }
+
+    // ── Jira — ConfigFields includes project field ───────────────────────────
+
+    [Fact]
+    public void Jira_ConfigFields_IncludesProjectField()
+    {
+        var connector = new JiraConnector(new HttpClient());
+        var field = connector.ConfigFields.FirstOrDefault(f => f.Key == "project");
+        Assert.NotNull(field);
+        Assert.Equal("text", field!.InputKind);
+        Assert.False(field.Required);
+        Assert.Null(field.DefaultValue);
+    }
 }
 
 /// <summary>Replays a queue of pre-built responses in order.</summary>

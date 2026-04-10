@@ -7,7 +7,13 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- **Azure DevOps connector**: default WIQL for new connections now includes `[System.AssignedTo] = @Me` to filter work items assigned to the current user.
+- **Trello connector**: new connections now include a "Only show cards assigned to me" checkbox (default ON) that post-filters cards by the token owner's member ID. When disabled or when member resolution fails, all board cards are returned.
+- **Jira connector**: new connections now include an optional "Project key" text field. When set, `project = "KEY" AND` is prepended to the configured JQL query.
+
 ### Added
+- **Settings UI checkbox support**: the connector configuration form now renders `checkbox` InputKind fields using the existing toggle-row CSS pattern, enabling boolean configuration options for connectors.
 - **First-run onboarding redirect**: when an authenticated user has no connectors configured, the dashboard automatically redirects to `/settings?onboarding=true` with a welcome toast guiding them to configure their first connector.
 - **Import auto-save and tab switch**: confirming a configuration import now automatically persists the imported settings and navigates to the Connectors tab with a success banner. On save failure, the user stays on the Import/Export tab with an error message.
 - **Collapsible dashboard panels**: the hero panel (title, description, metrics) and the title/filter panel on the dashboard are now collapsible via toggle buttons. Collapse state is persisted in `localStorage`, defaults to expanded, and collapsing filters does not clear active filter state. Toggle buttons include `aria-expanded` for accessibility.
