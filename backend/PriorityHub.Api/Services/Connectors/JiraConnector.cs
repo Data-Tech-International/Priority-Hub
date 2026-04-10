@@ -75,7 +75,8 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
             var effectiveJql = connection.Jql;
             if (!string.IsNullOrWhiteSpace(connection.Project))
             {
-                effectiveJql = $"project = \"{connection.Project}\" AND {connection.Jql}";
+                var sanitizedProject = connection.Project.Replace("\"", "", StringComparison.Ordinal);
+                effectiveJql = $"project = \"{sanitizedProject}\" AND {connection.Jql}";
             }
 
             var authHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{connection.Email}:{connection.ApiToken}"));

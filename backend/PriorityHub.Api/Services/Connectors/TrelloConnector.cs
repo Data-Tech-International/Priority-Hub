@@ -97,8 +97,8 @@ public sealed class TrelloConnector(HttpClient httpClient, ILogger<TrelloConnect
                 if (myMemberId is not null)
                 {
                     var memberIds = card.TryGetProperty("idMembers", out var membersEl) && membersEl.ValueKind == JsonValueKind.Array
-                        ? membersEl.EnumerateArray().Select(m => m.GetString()).ToList()
-                        : [];
+                        ? membersEl.EnumerateArray().Select(m => m.GetString()).Where(id => id is not null).ToList()
+                        : new List<string?>();
                     if (!memberIds.Contains(myMemberId))
                         continue;
                 }
