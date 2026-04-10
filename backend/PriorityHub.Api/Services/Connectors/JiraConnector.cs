@@ -16,6 +16,7 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
     [
         new("name", "Connection name"),
         new("baseUrl", "Base URL"),
+        new("project", "Project key (optional)", "text", false),
         new("email", "Email"),
         new("apiToken", "API token", "password"),
         new("jql", "JQL", "textarea", true,
@@ -69,10 +70,16 @@ public sealed class JiraConnector(HttpClient httpClient) : IConnector
 
             var baseUri = new Uri(connection.BaseUrl);
             boardConnection.WorkspaceName = baseUri.Host;
-            boardConnection.ProjectName = baseUri.Host;
+            boardConnection.ProjectName = !string.IsNullOrWhiteSpace(connection.Project) ? connection.Project : baseUri.Host;
+
+            var effectiveJql = connection.Jql;
+            if (!string.IsNullOrWhiteSpace(connection.Project))
+            {
+                effectiveJql = $"project = \"{connection.Project}\" AND {connection.Jql}";
+            }
 
             var authHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{connection.Email}:{connection.ApiToken}"));
-            var url = $"{connection.BaseUrl.TrimEnd('/')}/rest/api/3/search/jql?maxResults=50&fields=summary,status,assignee,labels,priority,duedate,created,updated,issuelinks&jql={Uri.EscapeDataString(connection.Jql)}";
+            var url = $"{connection.BaseUrl.TrimEnd('/')}/rest/api/3/search/jql?maxResults=50&fields=summary,status,assignee,labels,priority,duedate,created,updated,issuelinks&jql={Uri.EscapeDataString(effectiveJql)}";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

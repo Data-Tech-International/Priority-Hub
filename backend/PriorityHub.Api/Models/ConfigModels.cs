@@ -56,7 +56,7 @@ public sealed class AzureDevOpsConnection
     public string Project { get; set; } = string.Empty;
     [SensitiveField]
     public string PersonalAccessToken { get; set; } = string.Empty;
-    public string Wiql { get; set; } = "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc";
+    public string Wiql { get; set; } = "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.AssignedTo] = @Me And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc";
     public bool Enabled { get; set; } = true;
 }
 
@@ -66,6 +66,7 @@ public sealed class JiraConnection
     public string Name { get; set; } = string.Empty;
     public string Emoji { get; set; } = "📋";
     public string BaseUrl { get; set; } = string.Empty;
+    public string Project { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     [SensitiveField]
     public string ApiToken { get; set; } = string.Empty;
@@ -96,6 +97,7 @@ public sealed class TrelloConnection
     public string ApiKey { get; set; } = string.Empty;
     [SensitiveField]
     public string Token { get; set; } = string.Empty;
+    public bool FilterMyCards { get; set; } = true;
     public bool Enabled { get; set; } = true;
 }
 

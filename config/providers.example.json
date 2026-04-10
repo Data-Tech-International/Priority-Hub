@@ -9,7 +9,7 @@
       "organization": "your-organization",
       "project": "Commerce Platform",
       "personalAccessToken": "replace-with-pat",
-      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.AssignedTo] = @Me And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
       "enabled": true
     },
     {
@@ -18,7 +18,7 @@
       "organization": "your-organization",
       "project": "Shared Services",
       "personalAccessToken": "replace-with-pat",
-      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.AssignedTo] = @Me And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
       "enabled": true
     }
   ],
@@ -38,9 +38,10 @@
       "id": "jira-growth",
       "name": "Growth Board",
       "baseUrl": "https://your-domain.atlassian.net",
+      "project": "GROWTH",
       "email": "you@example.com",
       "apiToken": "replace-with-api-token",
-      "jql": "project = GROWTH AND assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC, updated DESC",
+      "jql": "assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC, updated DESC",
       "enabled": true
     }
   ],
@@ -51,6 +52,7 @@
       "boardId": "replace-with-board-id",
       "apiKey": "replace-with-key",
       "token": "replace-with-token",
+      "filterMyCards": true,
       "enabled": true
     }
   ],

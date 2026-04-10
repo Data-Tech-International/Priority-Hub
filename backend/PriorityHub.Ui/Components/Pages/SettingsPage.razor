@@ -140,7 +140,16 @@
                                                         var fieldError = GetFieldError(configKey, index, field.Key);
                                                         var isWide = field.InputKind == "textarea";
 
-                                                        @if (isWide)
+                                                        @if (field.InputKind == "checkbox")
+                                                        {
+                                                            <label class="toggle-row">
+                                                                <input type="checkbox"
+                                                                       checked="@(IsCheckboxChecked(connection, field.Key))"
+                                                                       @onchange="e => SetConnectionField(configKey, index, field.Key, e.Value)" />
+                                                                <span>@field.Label</span>
+                                                            </label>
+                                                        }
+                                                        else @if (isWide)
                                                         {
                                                             <label class="config-field config-field-wide@(fieldError is not null ? " config-field-error" : "")">
                                                                 <span>@field.Label</span>
@@ -673,11 +682,14 @@
     private static bool GetConnectionEnabled(Dictionary<string, object?> connection) =>
         !connection.TryGetValue("enabled", out var val) || val is not false;
 
+    private static bool IsCheckboxChecked(Dictionary<string, object?> connection, string field) =>
+        connection.TryGetValue(field, out var val) && val is true or "true" or "True";
+
     private void SetConnectionField(string configKey, int index, string field, object? value)
     {
         if (_connections.TryGetValue(configKey, out var list) && index < list.Count)
         {
-            if (field == "enabled")
+            if (field == "enabled" || IsCheckboxField(configKey, field))
             {
                 list[index][field] = value is true or "True" or "true";
             }
@@ -687,7 +699,7 @@
             }
 
             // Inline validation for text/password fields on change
-            if (field != "enabled" && field != EmojiField)
+            if (field != "enabled" && field != EmojiField && !IsCheckboxField(configKey, field))
             {
                 ValidateFieldInline(configKey, index, field);
             }
@@ -697,6 +709,12 @@
             }
         }
         _hasUnsavedChanges = true;
+    }
+
+    private bool IsCheckboxField(string configKey, string fieldKey)
+    {
+        var connector = _connectorMetadata.FirstOrDefault(c => ToConfigKey(c.ProviderKey) == configKey);
+        return connector?.ConfigFields.Any(f => f.Key == fieldKey && f.InputKind == "checkbox") ?? false;
     }
 
     private void ValidateFieldInline(string configKey, int index, string fieldKey)
@@ -769,7 +787,14 @@
         };
         foreach (var field in connector.ConfigFields)
         {
-            dict[field.Key] = field.DefaultValue ?? "";
+            if (field.InputKind == "checkbox")
+            {
+                dict[field.Key] = string.Equals(field.DefaultValue, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                dict[field.Key] = field.DefaultValue ?? "";
+            }
         }
         _connections[configKey].Add(dict);
         _expandedConnectors.Add(connector.ProviderKey);

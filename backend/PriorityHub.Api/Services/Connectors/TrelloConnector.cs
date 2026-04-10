@@ -1,9 +1,10 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using PriorityHub.Api.Models;
 
 namespace PriorityHub.Api.Services.Connectors;
 
-public sealed class TrelloConnector(HttpClient httpClient) : IConnector
+public sealed class TrelloConnector(HttpClient httpClient, ILogger<TrelloConnector> logger) : IConnector
 {
     // IConnector metadata
     public string ProviderKey => "trello";
@@ -16,6 +17,7 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
         new("boardId", "Board ID"),
         new("apiKey", "API key", "password"),
         new("token", "Token", "password"),
+        new("filterMyCards", "Only show cards assigned to me", "checkbox", false, "true"),
     ];
 
     public async Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken)
@@ -63,6 +65,13 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
                 throw new InvalidOperationException("Missing Trello board ID, API key, or token.");
             }
 
+            // Resolve the token owner's member ID when filtering is enabled
+            string? myMemberId = null;
+            if (connection.FilterMyCards)
+            {
+                myMemberId = await ResolveTokenOwnerMemberIdAsync(connection, cancellationToken);
+            }
+
             var listsUrl = $"https://api.trello.com/1/boards/{Uri.EscapeDataString(connection.BoardId)}/lists?fields=name,closed&key={Uri.EscapeDataString(connection.ApiKey)}&token={Uri.EscapeDataString(connection.Token)}";
             var cardsUrl = $"https://api.trello.com/1/boards/{Uri.EscapeDataString(connection.BoardId)}/cards?fields=name,idList,due,dateLastActivity,closed,labels,idMembers,url,shortLink&key={Uri.EscapeDataString(connection.ApiKey)}&token={Uri.EscapeDataString(connection.Token)}";
 
@@ -84,6 +93,16 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
 
             foreach (var card in cardsDocument.RootElement.EnumerateArray())
             {
+                // Post-filter by member ID when filtering is active
+                if (myMemberId is not null)
+                {
+                    var memberIds = card.TryGetProperty("idMembers", out var membersEl) && membersEl.ValueKind == JsonValueKind.Array
+                        ? membersEl.EnumerateArray().Select(m => m.GetString()).ToList()
+                        : [];
+                    if (!memberIds.Contains(myMemberId))
+                        continue;
+                }
+
                 var listId = card.GetProperty("idList").GetString() ?? string.Empty;
                 listsById.TryGetValue(listId, out var list);
                 var dueValue = card.TryGetProperty("due", out var dueElement) ? dueElement.GetString() : null;
@@ -136,6 +155,28 @@ public sealed class TrelloConnector(HttpClient httpClient) : IConnector
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Resolves the Trello member ID of the token owner.
+    /// Returns null (graceful fallback to unfiltered) on any API failure.
+    /// </summary>
+    private async Task<string?> ResolveTokenOwnerMemberIdAsync(TrelloConnection connection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var memberUrl = $"https://api.trello.com/1/tokens/{Uri.EscapeDataString(connection.Token)}/member?fields=id&key={Uri.EscapeDataString(connection.ApiKey)}";
+            using var memberResponse = await httpClient.GetAsync(memberUrl, cancellationToken);
+            memberResponse.EnsureSuccessStatusCode();
+            using var memberDocument = JsonDocument.Parse(await memberResponse.Content.ReadAsStringAsync(cancellationToken));
+            var memberId = memberDocument.RootElement.GetProperty("id").GetString();
+            return memberId;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Trello [{ConnectionId}] failed to resolve token owner member ID; falling back to unfiltered cards.", connection.Id);
+            return null;
+        }
     }
 
     internal static string MapStatus(string? listName, bool closed)

@@ -36,7 +36,7 @@ public sealed class AzureDevOpsConnector(HttpClient httpClient, ILogger<AzureDev
         new("project", "Project"),
         new("personalAccessToken", "PAT (optional with Microsoft sign-in)", "password", false),
         new("wiql", "WIQL", "textarea", true,
-            "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc"),
+            "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.AssignedTo] = @Me And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc"),
     ];
 
     public async Task<ConnectorResult> FetchConnectionAsync(JsonElement connectionConfig, string? oauthToken, CancellationToken cancellationToken)
