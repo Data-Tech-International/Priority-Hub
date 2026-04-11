@@ -9,7 +9,7 @@
       "organization": "your-organization",
       "project": "Commerce Platform",
       "personalAccessToken": "replace-with-pat",
-      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "wiql": "Select [System.Id] From WorkItems Where [System.AssignedTo] = @me And [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
       "enabled": true
     },
     {
@@ -18,7 +18,7 @@
       "organization": "your-organization",
       "project": "Shared Services",
       "personalAccessToken": "replace-with-pat",
-      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "wiql": "Select [System.Id] From WorkItems Where [System.AssignedTo] = @me And [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
       "enabled": true
     }
   ],

@@ -56,7 +56,7 @@ public sealed class AzureDevOpsConnection
     public string Project { get; set; } = string.Empty;
     [SensitiveField]
     public string PersonalAccessToken { get; set; } = string.Empty;
-    public string Wiql { get; set; } = "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc";
+    public string Wiql { get; set; } = "Select [System.Id] From WorkItems Where [System.AssignedTo] = @me And [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc";
     public bool Enabled { get; set; } = true;
 }
 

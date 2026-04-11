@@ -365,7 +365,7 @@ When a linked account is selected, its refresh token is exchanged for a Microsof
       "organization": "contoso",
       "project": "Commerce Platform",
       "personalAccessToken": "<your-pat>",
-      "wiql": "Select [System.Id] From WorkItems Where [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
+      "wiql": "Select [System.Id] From WorkItems Where [System.AssignedTo] = @me And [System.TeamProject] = @project And [System.State] <> 'Closed' Order By [System.ChangedDate] Desc",
       "enabled": true
     }
   ],
