@@ -7,6 +7,9 @@ Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- **Default ADO WIQL includes "Assigned to Me"**: new Azure DevOps connectors now default to `[System.AssignedTo] = @me` in the WIQL query, matching the Jira connector's `assignee = currentUser()` behavior. Existing connectors are unaffected.
+
 ### Added
 - **First-run onboarding redirect**: when an authenticated user has no connectors configured, the dashboard automatically redirects to `/settings?onboarding=true` with a welcome toast guiding them to configure their first connector.
 - **Import auto-save and tab switch**: confirming a configuration import now automatically persists the imported settings and navigates to the Connectors tab with a success banner. On save failure, the user stays on the Import/Export tab with an error message.
