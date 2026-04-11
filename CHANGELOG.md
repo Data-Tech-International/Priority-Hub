@@ -5,6 +5,20 @@ All notable changes to Priority Hub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Azure Application Insights telemetry integration with configuration-driven optional enablement
+- Authentication sign-in/sign-out event tracking with per-provider metrics (AuthSignInCount)
+- Connector fetch telemetry: status, duration, item count with per-provider metrics (ConnectorFetchCount, ConnectorFetchDuration, ConnectorItemsCount)
+- Blazor page-view tracking for navigation analytics
+- Configuration save and linked-account operation event tracking
+- Background service for periodic active-user and registered-user count metrics (ActiveUsers, RegisteredUsers)
+- ITelemetryInitializer for hashed user context enrichment across all telemetry
+- No-op ITelemetryService fallback when Application Insights connection string is absent
+- Comprehensive unit tests for all telemetry services, DI registration, and PII hashing
+
 ## [0.3.0](https://github.com/Data-Tech-International/Priority-Hub/compare/v0.2.0...v0.3.0) (2026-04-11)
 
 
