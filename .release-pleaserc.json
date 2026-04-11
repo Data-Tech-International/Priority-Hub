@@ -1,5 +1,5 @@
 {
-  "type": "simple",
+  "release-type": "simple",
   "packages": {
     ".": {
       "changelog-path": "CHANGELOG.md"
