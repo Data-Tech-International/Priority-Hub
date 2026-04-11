@@ -2,35 +2,29 @@
   "release-type": "simple",
   "packages": {
     ".": {
-      "changelog-path": "CHANGELOG.md"
-    }
-  },
-  "extra-files": [
-    {
-      "type": "xml",
-      "file": "backend/Directory.Build.props",
-      "updaters": [
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
         {
           "type": "xml",
-          "xpath": "//Version",
-          "version-key": "."
+          "path": "backend/Directory.Build.props",
+          "xpath": "//Project/PropertyGroup/Version"
         },
         {
           "type": "xml",
-          "xpath": "//AssemblyVersion",
-          "version-key": "."
+          "path": "backend/Directory.Build.props",
+          "xpath": "//Project/PropertyGroup/AssemblyVersion"
         },
         {
           "type": "xml",
-          "xpath": "//FileVersion",
-          "version-key": "."
+          "path": "backend/Directory.Build.props",
+          "xpath": "//Project/PropertyGroup/FileVersion"
         },
         {
           "type": "xml",
-          "xpath": "//InformationalVersion",
-          "version-key": "."
+          "path": "backend/Directory.Build.props",
+          "xpath": "//Project/PropertyGroup/InformationalVersion"
         }
       ]
     }
-  ]
+  }
 }
