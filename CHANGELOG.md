@@ -5,6 +5,13 @@ All notable changes to Priority Hub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/Data-Tech-International/Priority-Hub/compare/v0.3.0...v0.4.0) (2026-04-11)
+
+
+### Features
+
+* **#94:** Add telemetry unit tests, changelog, and version bump ([#94](https://github.com/Data-Tech-International/Priority-Hub/issues/94)) ([5ee9703](https://github.com/Data-Tech-International/Priority-Hub/commit/5ee9703c2c7dbcf295c16220a09eebad27c0578c))
+
 ## [Unreleased]
 
 ### Added
