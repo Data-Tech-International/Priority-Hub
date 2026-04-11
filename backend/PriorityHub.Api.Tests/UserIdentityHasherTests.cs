@@ -33,6 +33,8 @@ public sealed class UserIdentityHasherTests
     [InlineData("\t")]
     public void Hash_NullOrWhitespace_ReturnsEmptyString(string? input)
     {
+        // The null-forgiving operator is required because Hash accepts a non-nullable string,
+        // but we intentionally test the null case to verify defensive behavior.
         var result = UserIdentityHasher.Hash(input!);
 
         Assert.Equal(string.Empty, result);

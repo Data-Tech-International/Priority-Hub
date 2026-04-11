@@ -115,6 +115,7 @@ public sealed class ApplicationInsightsTelemetryServiceTests : IDisposable
         Assert.Equal("jira", evt.Properties["provider"]);
         Assert.Equal("conn-1", evt.Properties["connectionId"]);
         Assert.Equal("5", evt.Properties["itemCount"]);
+        // The implementation formats durationMs with "F0" (zero decimal places), so 123.4 → "123"
         Assert.Equal("123", evt.Properties["durationMs"]);
         Assert.Equal(expectedHash, evt.Properties["userId"]);
     }
