@@ -5,6 +5,42 @@ All notable changes to Priority Hub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Priority Hub adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/Data-Tech-International/Priority-Hub/compare/v0.2.0...v0.3.0) (2026-04-12)
+
+
+### Features
+
+* **#17:** dashboard UX improvements ([#18](https://github.com/Data-Tech-International/Priority-Hub/issues/18)) ([0dcc283](https://github.com/Data-Tech-International/Priority-Hub/commit/0dcc283db507855c43a1ad9198663cd643fdccc5))
+* **#19:** add agent configuration ([#20](https://github.com/Data-Tech-International/Priority-Hub/issues/20)) ([8001544](https://github.com/Data-Tech-International/Priority-Hub/commit/8001544a28de9f1bcc8c0ba75672e3bb15030d72))
+* **#23:** Secure browser passphrase cache using WebCrypto AES-GCM wrapping ([#24](https://github.com/Data-Tech-International/Priority-Hub/issues/24)) ([bd17154](https://github.com/Data-Tech-International/Priority-Hub/commit/bd17154b1c9a1f0a23b7e2e77b86d65a590020f5))
+* **#70:** UI onboarding redirect, import auto-save, and collapsible dashboard panels ([#71](https://github.com/Data-Tech-International/Priority-Hub/issues/71)) ([61fe961](https://github.com/Data-Tech-International/Priority-Hub/commit/61fe961605e472544547bb4784707f673f95ed6d))
+* Add app footer with version, feedback link, copyright, and license ([#49](https://github.com/Data-Tech-International/Priority-Hub/issues/49)) ([27901ed](https://github.com/Data-Tech-International/Priority-Hub/commit/27901edc7d3d85dc948a6a614c5bfc82e7d98b70))
+* add automatic semantic versioning with release-please ([#40](https://github.com/Data-Tech-International/Priority-Hub/issues/40)) ([247f959](https://github.com/Data-Tech-International/Priority-Hub/commit/247f9595c4d23cca27ddc4528ef26080934d01c1))
+* Add TargetDate & IsBlocked fields with dashboard filters and Connectors multi-select ([#45](https://github.com/Data-Tech-International/Priority-Hub/issues/45)) ([5e72986](https://github.com/Data-Tech-International/Priority-Hub/commit/5e72986d4352e20d2110cc43d5ba9119012f9d22))
+* Adopt PostgreSQL JSONB for config storage with seamless local development ([#32](https://github.com/Data-Tech-International/Priority-Hub/issues/32)) ([53a0588](https://github.com/Data-Tech-International/Priority-Hub/commit/53a0588c8c22e59d87d017372f16212e89214b72))
+* Dockerisation with PostgreSQL-backed configuration ([#34](https://github.com/Data-Tech-International/Priority-Hub/issues/34)) ([1fdb607](https://github.com/Data-Tech-International/Priority-Hub/commit/1fdb6076900642083732314987b75f3bcf8d8274))
+* import configuration with upsert merge logic and preview confirmation ([#59](https://github.com/Data-Tech-International/Priority-Hub/issues/59)) ([8dc10b9](https://github.com/Data-Tech-International/Priority-Hub/commit/8dc10b98ab823aa85f40d4f3cbf370e848a7f54b))
+* make authentication providers configurable with Enabled flag — Microsoft and GitHub on by default ([#55](https://github.com/Data-Tech-International/Priority-Hub/issues/55)) ([cb65f8a](https://github.com/Data-Tech-International/Priority-Hub/commit/cb65f8af620e19e8893594e1bf646170dfa1a781))
+* Migrate frontend from Vite + React to Blazor Server ([#12](https://github.com/Data-Tech-International/Priority-Hub/issues/12)) ([a50c40f](https://github.com/Data-Tech-International/Priority-Hub/commit/a50c40f288f9721c300eb3c3317abc122777ed5b))
+* open-source community infrastructure (docs, issue templates, metadata) ([#30](https://github.com/Data-Tech-International/Priority-Hub/issues/30)) ([ad4df7f](https://github.com/Data-Tech-International/Priority-Hub/commit/ad4df7fdb91f2499225e8b5f55c3a22b3509ee44))
+* UI improvements — dashboard, connector filter, login providers and auth icons ([#53](https://github.com/Data-Tech-International/Priority-Hub/issues/53)) ([b5bdd7f](https://github.com/Data-Tech-International/Priority-Hub/commit/b5bdd7f26f6ab966d070e27ad1162b5c21b113e5))
+
+
+### Bug Fixes
+
+* **#37:** differentiate Azure DevOps 404 from auth errors in error messages ([#38](https://github.com/Data-Tech-International/Priority-Hub/issues/38)) ([606f62a](https://github.com/Data-Tech-International/Priority-Hub/commit/606f62a5c2160da4b4e5aaba2e4af45aee6c3b34))
+* **#68:** restore _framework/blazor.web.js in Docker builds ([b2038ce](https://github.com/Data-Tech-International/Priority-Hub/commit/b2038ced22e35c508a610fd7b4ecf9dfce3d468d)), closes [#68](https://github.com/Data-Tech-International/Priority-Hub/issues/68)
+* **#72:** span toggle row across hero-panel grid columns ([#73](https://github.com/Data-Tech-International/Priority-Hub/issues/73)) ([a7be82c](https://github.com/Data-Tech-International/Priority-Hub/commit/a7be82c9f56010355c9c80232c9ec2aefa431529))
+* add startup retry for database connection ([5d825ef](https://github.com/Data-Tech-International/Priority-Hub/commit/5d825ef4d495340eace4bc7c79cac2e8ceb61347))
+* Add UseForwardedHeaders middleware and document WebSocket requirement for Azure deployments ([#69](https://github.com/Data-Tech-International/Priority-Hub/issues/69)) ([a685833](https://github.com/Data-Tech-International/Priority-Hub/commit/a685833ae351650bf365047c4f46320b435b49b6))
+* Azure DevOps connector — use DevOps-scoped token via refresh exchange ([#16](https://github.com/Data-Tech-International/Priority-Hub/issues/16)) ([255a4a9](https://github.com/Data-Tech-International/Priority-Hub/commit/255a4a9a5f494922106fd98218c203b4e9c781a9))
+* **azure-devops:** stop using Graph API token as Azure DevOps fallback ([#14](https://github.com/Data-Tech-International/Priority-Hub/issues/14)) ([17a6e06](https://github.com/Data-Tech-International/Priority-Hub/commit/17a6e062c51a1dc15af2e01176e00f1a95b6c4c0))
+* **ci:** correct extra-files format for release-please XML updater ([707bb51](https://github.com/Data-Tech-International/Priority-Hub/commit/707bb5168fe531e32492fb5e327c90d2d066e6e2))
+* **ci:** remove Node.js/npm requirements from CI workflows for Blazor migration Phase 8 ([#13](https://github.com/Data-Tech-International/Priority-Hub/issues/13)) ([792dee1](https://github.com/Data-Tech-International/Priority-Hub/commit/792dee1550a8f03f2aad05734d7222d7ccd90a69))
+* **ci:** use correct release-type key and add version.txt for simple release ([9c91c58](https://github.com/Data-Tech-International/Priority-Hub/commit/9c91c58cf4d14d0ef6c23e75937c68471c827feb))
+* correct VS Code task problem matcher configuration ([#9](https://github.com/Data-Tech-International/Priority-Hub/issues/9)) ([9a501f0](https://github.com/Data-Tech-International/Priority-Hub/commit/9a501f096190bb25b602db0c263d3c2910f59397))
+* vertically centre checkboxes in Connector and Tag filter dropdowns ([#57](https://github.com/Data-Tech-International/Priority-Hub/issues/57)) ([c539d0f](https://github.com/Data-Tech-International/Priority-Hub/commit/c539d0ff6705845d6a2f11720c231be3865c6f79))
+
 ## [Unreleased]
 
 ### Added
